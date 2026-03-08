@@ -1,0 +1,153 @@
+{
+  "name": "aiap_creator",
+  "description": "AIAP Creator — creates, evolves, discovers, deprecates, validates, and simulates AIAP programs through a 15-stage pipeline with PL28 parallel self-observation via PostExecution convergence node for universal intent coverage. INSIGHTS mechanism redesign: code-as-switch architecture (insights.aisop.json + advisor lifecycle management). NO_CROSS_WRITE attribution rule. Enforces NO_SELF_MODIFY protocol rule.",
+  "version": "1.1.0",
+  "provider": "AIXP Foundation AIXP.dev | SoulBot.dev",
+  "pattern": "D+G",
+  "tags": [
+    "aiap",
+    "creator",
+    "pipeline",
+    "governance",
+    "meta"
+  ],
+  "skills": [
+    {
+      "id": "create",
+      "name": "Create",
+      "description": "Create a new AIAP program from scratch via the full 15-stage pipeline (Research -> Evolve -> Generate -> Modify -> QualityGate -> Validate -> Simulate -> PostSimulateGate -> Observability -> Review).",
+      "inputModes": ["text"],
+      "outputModes": ["text", "file"]
+    },
+    {
+      "id": "evolve",
+      "name": "Evolve",
+      "description": "Evolve an existing AIAP program to a next-gen version with new capabilities, using the full pipeline with incremental diff analysis.",
+      "inputModes": ["text"],
+      "outputModes": ["text", "file"]
+    },
+    {
+      "id": "modify",
+      "name": "Modify",
+      "description": "Within-version patch, quality improvement, or bug fix on a specific module via a shorter pipeline (Research(quality) -> Modify -> Generate -> Validate -> Review).",
+      "inputModes": ["text"],
+      "outputModes": ["text", "file"]
+    },
+    {
+      "id": "validate",
+      "name": "Validate",
+      "description": "Structural and quality check of an existing AIAP program using ThreeDimTest with 33+ checks (C1-C7, I1-I13, D1-D10) and MF1-MF27 multi-file audit. Includes score trajectory analysis with per-dimension root-cause annotation. Standalone read-only operation.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "simulate",
+      "name": "Simulate",
+      "description": "Dry-run execution path tracing and scenario coverage analysis of an existing AIAP program (Categories A-X, including multi-mechanism interaction, async delegation race detection, CREATE mode enhancement, INSIGHTS mechanism scenarios, and Insights Lifecycle scenarios). Standalone read-only operation.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "compare",
+      "name": "Compare",
+      "description": "Side-by-side diff comparison of two AIAP program versions or two different AIAP programs, generating a structured diff report.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "discover",
+      "name": "Discover",
+      "description": "Search for existing AIAP programs by domain or keyword via workspace scan, federated registry query, and semantic matching with related recommendations.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "deprecate",
+      "name": "Deprecate",
+      "description": "Mark an AIAP program as deprecated or archived, performing state transition and migration guide generation.",
+      "inputModes": ["text"],
+      "outputModes": ["text", "file"]
+    },
+    {
+      "id": "export",
+      "name": "Export",
+      "description": "Export an AIAP program to SKILL.md format with field mapping and governance metadata preservation.",
+      "inputModes": ["text"],
+      "outputModes": ["text", "file"]
+    },
+    {
+      "id": "import",
+      "name": "Import",
+      "description": "Import a SKILL.md file and generate an AIAP program skeleton with governance defaults.",
+      "inputModes": ["text"],
+      "outputModes": ["text", "file"]
+    },
+    {
+      "id": "explain",
+      "name": "Explain",
+      "description": "Explain AIAP concepts, protocol rules, and program structure through inline knowledge responses.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "package",
+      "name": "Package",
+      "description": "Pack an AIAP program into a .aiap archive for distribution, or unpack and verify a .aiap archive.",
+      "inputModes": ["text"],
+      "outputModes": ["text", "file"]
+    },
+    {
+      "id": "general",
+      "name": "General",
+      "description": "Handle general queries and other requests not matching specific intents, with proactive suggestions.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "trust_level": 4,
+  "tools": [
+    "file_system",
+    "google_search",
+    "web_browser"
+  ],
+  "modules": [
+    "aiap_creator.main",
+    "aiap_creator.generate",
+    "aiap_creator.research",
+    "aiap_creator.modify",
+    "aiap_creator.review",
+    "aiap_creator.simulate",
+    "aiap_creator.observability",
+    "aiap_creator.advisor (insights lifecycle sub-graph)",
+    "aiap_creator.standard_core",
+    "aiap_creator.standard_security",
+    "aiap_creator.standard_ecosystem",
+    "aiap_creator.standard_performance"
+  ],
+  "status": "active",
+  "safety_card": {
+    "risk_level": "medium-high",
+    "data_handling": {
+      "storage": "file_system",
+      "retention": "persistent",
+      "encryption": "n/a"
+    },
+    "limitations": [
+      "File system write scope limited to workspace_dir",
+      "Network access limited to *.google.com and *.bing.com",
+      "Cannot directly execute AIAP programs (SoulBot executor responsibility)",
+      "Not applicable to non-AISOP format projects",
+      "Max 50 programs scanned during discovery",
+      "Remote registry query timeout: 3 seconds"
+    ]
+  },
+  "_generated": {
+    "generator": "AIAP Creator v1.1.0",
+    "timestamp": "2026-03-08T00:00:00Z"
+  }
+}

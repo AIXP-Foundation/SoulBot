@@ -1,0 +1,95 @@
+[
+    {
+        "role": "system",
+        "content": {
+            "protocol": "AIAP V1.0.0",
+            "id": "aiap_auto_evolution.executor",
+            "name": "AIAP Auto Evolution Executor v1.0.0",
+            "thinking_mode": {
+                "L0": "Thinking in hexadecimal machina code",
+                "L1": "Output helpfully in User's exact language and script variant",
+                "output": "L1"
+            },
+            "version": "1.0.0",
+            "summary": "Single-round evolution executor. Prepares Creator context, takes pre-round snapshot, executes Creator pipeline via intent execution through AIAP_Tools, collects and verifies results.",
+            "description": "Executor module for AIAP Auto Evolution. Called once per round to execute a single evolution via nested Creator intent execution. Flow: PrepareContext -> SnapshotPre -> IntentExecute -> CollectResults -> VerifyOutput. 5 nodes.",
+            "tools": [
+                "file_system"
+            ],
+            "parameters": {
+                "target_program_path": {
+                    "type": "string",
+                    "agentic_prompt": "Absolute path to target AIAP program directory."
+                },
+                "evolution_plan": {
+                    "type": "object",
+                    "agentic_prompt": "Evolution plan from planner module."
+                },
+                "workspace_dir": {
+                    "type": "string",
+                    "agentic_prompt": "Absolute path to AIAP store directory."
+                },
+                "round_number": {
+                    "type": "integer",
+                    "agentic_prompt": "Current round number."
+                },
+                "creator_tool_path": {
+                    "type": "string",
+                    "agentic_prompt": "Path to nested Creator in AIAP_Tools/aiap_creator_evolution_aiap/."
+                }
+            },
+            "system_prompt": "Execute single evolution round via Creator intent execution. Take snapshots for rollback safety. Verify output integrity.\nAlign: Human Sovereignty and Benefit."
+        }
+    },
+    {
+        "role": "user",
+        "content": {
+            "instruction": "RUN aisop.main",
+            "aisop": {
+                "main": "graph TD\n    Start[Execute Request] --> PrepareContext[Prepare Creator Context]\n    PrepareContext --> SnapshotPre[Take Pre-Round Snapshot]\n    SnapshotPre --> IntentExecute[Intent Execute Creator]\n    IntentExecute --> CollectResults[Collect Results]\n    CollectResults --> VerifyOutput[Verify Output Integrity]\n    VerifyOutput --> endNode((End))"
+            },
+            "functions": {
+                "Start": {
+                    "step1": "Receive execution request with target_program_path, evolution_plan, workspace_dir, round_number, creator_tool_path.",
+                    "constraints": "All parameters required.",
+                    "Error": "Missing parameters -> abort with error details."
+                },
+                "PrepareContext": {
+                    "step1": "Build Creator invocation context: (a) Intent: 'Evolve' — triggers Creator's full 15-stage pipeline. (b) Target: target_program_path. (c) Evolution specification: convert evolution_plan into natural language instruction that Creator's NLU will classify as 'Evolve'. Format: 'Evolve {program_name} to implement: {evolution_plan.direction}. Changes: {evolution_plan.level_changes formatted as list}.'",
+                    "step2": "Set Creator parameters: workspace_dir = workspace_dir, quality_threshold = 'standard'.",
+                    "step3": "CREATOR AISOP LOADING: read creator_tool_path/main.aisop.json to prepare intent execution context. Verify Creator version matches expected (v1.24.0).",
+                    "constraints": "Creator invocation MUST go through its NLU -> PipelineEntry -> full 15-stage pipeline. No shortcutting stages. The intent execution follows the Creator's AISOP nodes exactly as written.",
+                    "Error": "Creator AISOP not found at creator_tool_path -> abort: 'Creator tool not found in AIAP_Tools.'"
+                },
+                "SnapshotPre": {
+                    "step1": "Take pre-round snapshot of target program: (a) Copy all .aisop.json + AIAP.md + quality_baseline.json + agent_card.json to .evolution_snapshot_round_{round_number}/. (b) Generate snapshot_manifest.json: { round_number, timestamp, files: [{ name, sha256 }] }.",
+                    "step2": "Verify snapshot integrity: re-read copied files and compare SHA-256 against manifest.",
+                    "constraints": "Snapshot MUST succeed before execution proceeds. If snapshot fails, abort this round. Snapshot directory is separate from Creator's PL26 snapshot (which Creator creates internally).",
+                    "Error": "Snapshot fails -> abort round: 'Cannot create safety snapshot — round execution blocked.'"
+                },
+                "IntentExecute": {
+                    "step1": "INTENT EXECUTION: Execute the Creator's AISOP as a nested program. This is NOT an API call — the runtime reads Creator's main.aisop.json and executes it node-by-node, starting from Start -> NLU (which classifies as 'Evolve') -> PipelineEntry -> full 15-stage pipeline. The evolution_plan is passed as the user instruction to Creator's Start node.",
+                    "step2": "During Creator execution, monitor for: (a) Creator's QualityGate result. (b) Creator's PostSimulateGate result. (c) Creator's ReviewStep completion. (d) Any ERROR or ABORT from Creator.",
+                    "step3": "Creator's EvolveStep will present changes for confirmation. AUTO MODE BEHAVIOR: auto-confirm all Creator's EvolveStep prompts (the outer orchestrator already approved the plan). SEMI/SUPERVISED: Creator's internal confirmations are auto-approved since the outer UserGate already handled user confirmation.",
+                    "constraints": "STRICT EXECUTION: every Creator node is executed as written. No skipping, no summarizing. Creator's own PL28 insights (if enabled) run independently. Creator's own PL26 snapshot runs independently. This executor does NOT modify Creator's behavior — it only provides input and collects output. CIRCUIT BREAKER: if Creator fails at the same stage as a previous round's failure (same failure_stage in execution history), mark plan as 'structurally_incompatible' and set execution_result.permanent_failure = true. Caller (main.RoundLoop) should NOT retry with the same plan. TIMEOUT: if Creator execution exceeds runtime.timeout_seconds (600s), terminate and mark execution_result.success = false with reason 'timeout'.",
+                    "Error": "Creator pipeline fails -> capture { failure_stage, failure_reason, partial_outputs } -> mark execution_result.success = false -> if same failure_stage as previous round, set permanent_failure = true -> return to caller."
+                },
+                "CollectResults": {
+                    "step1": "After Creator completes, collect execution_result: (a) success: boolean. (b) new_version: string (from Creator's ReviewStep output). (c) files_changed: list of modified/created files. (d) quality_score: { weighted_score, grade, C, I, D } from Creator's Generate2 ThreeDimTest. (e) simulation_result: { scenarios, passed, pass_rate } from Creator's SimulateStep. (f) creator_output_summary: condensed Creator pipeline output.",
+                    "step2": "If Creator failed at any stage, capture: failure_stage, failure_reason, partial_outputs.",
+                    "constraints": "Collect ALL quality metrics from Creator's output. These are needed by validator for regression check.",
+                    "Error": "Cannot parse Creator output -> set execution_result.success = false with note 'Creator output unparseable.'"
+                },
+                "VerifyOutput": {
+                    "step1": "Post-execution verification: (a) Read target program's AIAP.md — verify version was bumped. (b) Read target program's .aisop.json files — verify valid JSON. (c) Compare file list against Creator's reported files_changed — verify consistency.",
+                    "step2": "If verification fails: set execution_result.verified = false, add verification_issues list.",
+                    "step3": "Output final execution_result to caller (main's ExecuteRound node).",
+                    "constraints": "Verification is a safety check. If files are inconsistent with Creator's report, flag but don't auto-rollback (let validator decide).",
+                    "Error": "Verification fails -> flag in execution_result, don't abort (validator handles decision)."
+                }
+            },
+            "constraints": "GLOBAL: (1) Creator AISOP is executed via intent execution, not API call. (2) Pre-round snapshot is mandatory. (3) Creator's internal flow is not modified or shortcut. (4) All Creator quality metrics are collected for validator.",
+            "Error": "Unhandled error -> set execution_result = { success: false, error: details } -> return to caller."
+        }
+    }
+]

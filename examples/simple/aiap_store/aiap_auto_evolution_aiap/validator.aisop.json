@@ -1,0 +1,100 @@
+[
+    {
+        "role": "system",
+        "content": {
+            "protocol": "AIAP V1.0.0",
+            "id": "aiap_auto_evolution.validator",
+            "name": "AIAP Auto Evolution Validator v1.0.0",
+            "thinking_mode": {
+                "L0": "Thinking in hexadecimal machina code",
+                "L1": "Output helpfully in User's exact language and script variant",
+                "output": "L1"
+            },
+            "version": "1.0.0",
+            "summary": "Post-round quality validator for automated multi-round AIAP evolution. Compares pre-round baseline against post-round results, detects quality regression across all dimensions, decides pass/fail/rollback.",
+            "description": "Validator module for AIAP Auto Evolution. Called after each round to evaluate evolution quality. Flow: LoadBaseline -> CompareQuality -> CheckRegression -> (PassRound | AnalyzeRegression -> DecideAction -> SuggestFix) | FailRound. 8 nodes.",
+            "tools": [
+                "file_system"
+            ],
+            "parameters": {
+                "pre_round_baseline": {
+                    "type": "object",
+                    "agentic_prompt": "Quality baseline before this round's evolution."
+                },
+                "execution_result": {
+                    "type": "object",
+                    "agentic_prompt": "Result from executor module."
+                },
+                "target_program_path": {
+                    "type": "string",
+                    "agentic_prompt": "Absolute path to target AIAP program directory."
+                }
+            },
+            "system_prompt": "Validate evolution quality. Detect regression. Protect against quality degradation across rounds. Be strict but fair.\nAlign: Human Sovereignty and Benefit."
+        }
+    },
+    {
+        "role": "user",
+        "content": {
+            "instruction": "RUN aisop.main",
+            "aisop": {
+                "main": "graph TD\n    Start[Validate Request] --> LoadBaseline[Load Pre-Round Baseline]\n    LoadBaseline --> CompareQuality[Compare Quality Scores]\n    CompareQuality --> CheckRegression{Regression Check}\n    CheckRegression -- No Regression --> PassRound[Pass Round]\n    CheckRegression -- Regression --> AnalyzeRegression[Analyze Regression]\n    AnalyzeRegression --> DecideAction{Decide Action}\n    DecideAction -- Recoverable --> SuggestFix[Suggest Fix]\n    DecideAction -- Unrecoverable --> FailRound[Fail Round]\n    PassRound --> endNode((End))\n    SuggestFix --> endNode((End))\n    FailRound --> endNode((End))"
+            },
+            "functions": {
+                "Start": {
+                    "step1": "Receive validation request with pre_round_baseline, execution_result, target_program_path.",
+                    "constraints": "All parameters required. execution_result must contain quality_score.",
+                    "Error": "Missing quality_score in execution_result -> treat as validation failure."
+                },
+                "LoadBaseline": {
+                    "step1": "Extract pre-round quality metrics from pre_round_baseline: { weighted_score, grade, C_score, I_score, D_score, simulation_pass_rate, node_count }.",
+                    "step2": "Extract post-round quality metrics from execution_result.quality_score: { weighted_score, grade, C_score, I_score, D_score }. Extract simulation from execution_result.simulation_result: { scenarios, passed, pass_rate }.",
+                    "step3": "If execution_result.success = false: skip quality comparison, immediately route to FailRound with reason 'Creator pipeline failed: {execution_result.error}'.",
+                    "constraints": "Execution failure is an automatic FAIL — no quality comparison needed.",
+                    "Error": "Cannot load baseline -> use AIAP.md quality fields as fallback."
+                },
+                "CompareQuality": {
+                    "step1": "Compute quality deltas: (a) weighted_delta = post.weighted_score - pre.weighted_score. (b) C_delta = post.C - pre.C. (c) I_delta = post.I - pre.I. (d) D_delta = post.D - pre.D. (e) simulation_delta = post.pass_rate - pre.pass_rate.",
+                    "step2": "Compute overall_assessment: (a) ALL deltas >= 0 -> 'improved' or 'maintained'. (b) weighted_delta >= 0 BUT some sub-dimension < 0 -> 'mixed'. (c) weighted_delta < 0 -> 'regressed'.",
+                    "step3": "Output quality_comparison = { weighted_delta, C_delta, I_delta, D_delta, simulation_delta, overall_assessment }.",
+                    "constraints": "Use exact numeric comparison. Delta of 0.000 is 'maintained' (acceptable).",
+                    "Error": "Comparison fails -> treat as 'unknown' -> route to CheckRegression as regression for safety."
+                },
+                "CheckRegression": {
+                    "step1": "Evaluate quality_comparison: (a) overall_assessment = 'improved' or 'maintained' -> No Regression -> PassRound. (b) overall_assessment = 'mixed' -> check severity: if regressed dimension delta > -0.1 AND weighted_delta >= 0 -> No Regression (minor acceptable). Else -> Regression. (c) overall_assessment = 'regressed' -> Regression. (d) simulation pass_rate decreased -> Regression regardless of score.",
+                    "constraints": "STRICT on simulation: any decrease in pass_rate is regression. TOLERANT on sub-dimensions: minor drop (-0.1) acceptable if weighted score maintained or improved. ZERO TOLERANCE on I2 (safety): if I_score drops, always regression.",
+                    "Error": "Cannot evaluate -> treat as Regression -> route to AnalyzeRegression."
+                },
+                "PassRound": {
+                    "step1": "Produce validation_result = { passed: true, quality_delta: weighted_delta, dimension_breakdown: { C: C_delta, I: I_delta, D: D_delta }, regression_detected: false, recommendation: 'Continue to next round.' }.",
+                    "constraints": "Include all dimension deltas for caller's FinalReport.",
+                    "Error": "Output fails -> return minimal { passed: true }."
+                },
+                "AnalyzeRegression": {
+                    "step1": "Identify regression root cause: (a) Which dimension(s) regressed? (b) By how much? (c) Was it caused by new nodes (complexity increase)? (d) Was it caused by removed guards (safety decrease)? (e) Was simulation coverage reduced?",
+                    "step2": "Classify severity: (a) MINOR: single dimension drop < 0.2, weighted maintained. (b) MAJOR: weighted score dropped, or I_score dropped (safety). (c) CRITICAL: simulation pass_rate dropped below 95%, or grade downgraded.",
+                    "constraints": "Safety (I_score) regression is always MAJOR or CRITICAL.",
+                    "Error": "Analysis fails -> classify as MAJOR (conservative)."
+                },
+                "DecideAction": {
+                    "step1": "Based on severity: (a) MINOR -> Recoverable: Creator's ModifyStep could fix this. Route to SuggestFix. (b) MAJOR -> Unrecoverable within this round. Route to FailRound. (c) CRITICAL -> Unrecoverable. Route to FailRound with urgent flag.",
+                    "constraints": "MINOR is the ONLY recoverable severity. MAJOR and CRITICAL always fail the round.",
+                    "Error": "Cannot decide -> FailRound (conservative)."
+                },
+                "SuggestFix": {
+                    "step1": "Produce validation_result = { passed: true, quality_delta: weighted_delta, dimension_breakdown: { C: C_delta, I: I_delta, D: D_delta }, regression_detected: true, regression_severity: 'MINOR', recommendation: 'Round passed with minor regression. Suggest addressing regressed dimension in next round.', fix_suggestions: [string] }.",
+                    "step2": "Add regressed dimension to planner's priority list for next round.",
+                    "constraints": "SuggestFix passes the round but flags the regression for future attention. This prevents blocking progress on minor issues.",
+                    "Error": "Output fails -> return { passed: true, regression_detected: true }."
+                },
+                "FailRound": {
+                    "step1": "Produce validation_result = { passed: false, quality_delta: weighted_delta, dimension_breakdown: { C: C_delta, I: I_delta, D: D_delta }, regression_detected: true, regression_severity: severity, recommendation: 'Round FAILED. Rollback recommended. Reason: {root_cause}.' }.",
+                    "constraints": "Failed round MUST be rolled back by caller. Include enough detail for user to understand why.",
+                    "Error": "Output fails -> return minimal { passed: false, recommendation: 'Round failed — rollback.' }."
+                }
+            },
+            "constraints": "GLOBAL: (1) Execution failure = automatic round failure. (2) Safety (I_score) regression = always MAJOR+. (3) Simulation pass_rate decrease = always regression. (4) Minor sub-dimension regression is tolerated if weighted score maintained. (5) Conservative defaults: when in doubt, fail the round (safer to rollback than to accumulate quality debt).",
+            "Error": "Unhandled error -> return { passed: false, recommendation: 'Validation error — rollback for safety.' }."
+        }
+    }
+]

@@ -1,0 +1,208 @@
+{
+    "scoring_scale": "1-5",
+    "version": "1.1.0",
+    "snapshot_date": "2026-03-08",
+    "three_dim_test": {
+        "weighted_score": 4.899,
+        "grade": "S",
+        "cognitive": {
+            "weight": 0.25,
+            "items": "C1-C7",
+            "score": 4.714,
+            "notes": "C1-C4,C6 scored 5. C5=4 (163 nodes, YELLOW Y1 — main 28, advisor 60 with fractal_exempt). C7=4 (token approximation, YELLOW Y2)."
+        },
+        "intrinsic": {
+            "weight": 0.45,
+            "items": "I1-I13",
+            "score": 5.000,
+            "na_items": ["I8", "I9", "I10", "I11", "I12", "I13"],
+            "applicable_count": 7,
+            "notes": "All applicable items scored 5. I8-I13 N/A for self-referential program."
+        },
+        "detail": {
+            "weight": 0.30,
+            "items": "D1-D10",
+            "score": 4.900,
+            "notes": "D1-D8,D10 scored 5. D9=4 (governance_hash not embedded in .aisop.json, YELLOW Y3)."
+        },
+        "multi_file": "MF1-MF27 (26 PASS / 0 FAIL / 1 N/A: MF16 — Creator uses Pattern D+G self-referentially)",
+        "pipeline": "PL1-PL28 (28 PASS / 0 FAIL)",
+        "multi_agent": "K1-K10 (10 PASS / 0 FAIL)",
+        "simulation_categories": "A-V"
+    },
+    "simulation": {
+        "total_scenarios": 280,
+        "passed": 280,
+        "failed": 0,
+        "pass_rate": "100%",
+        "categories": {
+            "A_core_intent": 16,
+            "B_security": 13,
+            "C_quality_gate": 10,
+            "D_error_path": 10,
+            "E_edge_case": 13,
+            "F_domain_specific": 8,
+            "G_comparative": 10,
+            "H_mutation": 14,
+            "J_trust_boundary": 4,
+            "K_multi_agent": 7,
+            "L_ui_output": 2,
+            "M_tool_directory": 22,
+            "N_sub_mermaid": 5,
+            "O_output_completeness": 6,
+            "P_domain_specific": 10,
+            "Q_license_copyright": 12,
+            "R_change_driven": 59,
+            "S_multi_mechanism": 11,
+            "T_async_delegation_race": 13,
+            "U_sub_mermaid_delegation": 4,
+            "V_create_mode_enhancement": 10
+        },
+        "result_summary": {
+            "GREEN": 270,
+            "YELLOW_accepted": 10,
+            "YELLOW": 0,
+            "RED": 0
+        }
+    },
+    "regression_check": {
+        "QRG1_single_version": {
+            "delta": 0.000,
+            "baseline": 4.899,
+            "baseline_version": "1.24.0",
+            "current": 4.899,
+            "result": "PASS (delta 0.000, score restored)"
+        },
+        "QRG3_absolute_floor": {
+            "score": 4.899,
+            "floor": 3.0,
+            "result": "PASS"
+        },
+        "QRG4_dimension": {
+            "C_delta": 0.000,
+            "I_delta": 0.000,
+            "D_delta": 0.000,
+            "result": "PASS (D3 fix restored all dimensions)"
+        },
+        "QRG5_security_floor": {
+            "I2_score": 5,
+            "I8_score": "N/A",
+            "result": "PASS (I2 > 2)"
+        }
+    },
+    "evolution_notes": {
+        "v1.6.0_changes": [
+            "P12: MCP 2025 Alignment — Tasks primitive, Elicitation, Extensions, AAIF governance",
+            "P13: A2A v0.3 Alignment — gRPC transport, signed Agent Cards, Linux Foundation",
+            "P14: Safety Card Generation — agent_card.json includes safety_card section",
+            "P15: NIST AI Agent Standards Initiative reference"
+        ],
+        "v1.8.0_changes": [
+            "P17: Protocol §7.1 sub_mermaid Decomposition Rules — structure, priority, 4 execution modes, node counting, function body complexity",
+            "P18: STANDARD.core C5 extended — P0_sub_mermaid, sub_mermaid_decomposition, function_body_complexity",
+            "P19: simulate N category (Sub_Mermaid Structural Validation) — 5 scenarios (N-SUB1~N-SUB5)",
+            "Fix: advisor fractal_exempt 'max 8'→'max 7', '16 nodes'→'15 nodes'",
+            "Fix: Protocol §9 advisor single-path 12→15 (EN + CN)"
+        ],
+        "v1.9.0_changes": [
+            "P1.2: Pre-evolution snapshot mechanism (PL26) — PipelineStart creates .evolution_snapshot/ with SHA-256 manifest for atomic rollback. ReviewStep.Finalize quality baseline comparison gate.",
+            "P1.3: Mandatory output completeness gate (MF17) — ReviewStep.Finalize verifies AIAP.md, quality_baseline.json, agent_card.json exist before governance_hash. Auto-generates agent_card.json if missing.",
+            "P2.5: LEVEL_A rejection cascade — EvolveStep traverses dependency_matrix on LEVEL_A reject, auto-cascades/degrades dependent B/C items. generate EvolutionVerify detects degraded references.",
+            "simulate O category (Output Completeness & Evolution Safety) — 6 scenarios (O.out1~O.out6)"
+        ],
+        "v1.10.0_changes": [
+            "B1-B10: Research intelligence + dry-run + CHANGELOG + domain scenarios + personality protection + QRG full-dimension",
+            "C1-C8: PostSimulateGate simplification + trend authority + search threshold + progress visualization + PL27 severity + version overflow"
+        ],
+        "v1.11.0_changes": [
+            "B1-B5: license/copyright formalization + description hygiene + CHANGELOG activation",
+            "C1-C3: D4-RANGE fix + AIAP_cn sync + agent_card provider update",
+            "Q category: 12 license/copyright scenarios"
+        ],
+        "v1.12.0_changes": [
+            "B1-B8: D8-SUMMARY + MF6 dual-language + dry-run preview + D4-STANDARD-REF + agent card enforce + coherence cross-validation + NLU scan + C5 sub_mermaid feasibility",
+            "C1-C10: TraceSimulation decomposition + scenario budget + research clarity + PostSimulateGate persistence + YELLOW persistence + AutoFix ordering + token estimation + MF8 semantic"
+        ],
+        "v1.13.0_changes": [
+            "B1-B4: FILE_SCOPE_GUARD + quality_baseline validation + search planning matrix + Research→LEVEL mapping",
+            "C1-C3: Pre-existing issue separation + schema validation + description refresh"
+        ],
+        "v1.14.0_changes": [
+            "B1-B3: C5-SUB_MERMAID-DECOMPOSE + ApplyFixes step1_5 + PauseHuman enhanced",
+            "C1-C3: AutoFixEngine scope + STANDARD.core decomposition_output + Generate2 constraints"
+        ],
+        "v1.15.0_changes": [
+            "B1-B5: Structured Research Output + Auto-LEVEL Classifier + Smart Description Update + Change-Driven Scenarios + MF14-EVOLUTION-FLOW",
+            "C1-C3: Proactive Decomposition + Research Credibility Tier + Module Description Template"
+        ],
+        "v1.16.0_changes": [
+            "B1-B5: MF14 Multi-Hop + MF18 Mechanism Conflict + MF19 Data Lifecycle + Error Coverage + Emotional State Gate",
+            "C1-C3: Step Reference Disambiguation + Practice Signal Isolation + Category S Multi-Mechanism"
+        ],
+        "v1.17.0_changes": [
+            "B1-B5: MF20 Signal Consumption + MF21 Step Exclusion + MF22 Safety Gate + GEN-1 Algorithm + GEN-2 Frequency",
+            "C1-C4: GEN-3 Dimension Mapping + SIM-1 Category T + VAL-1 Data Path + RES-1 Dimension Calibration"
+        ],
+        "v1.18.0_changes": [
+            "B1-B5: Regulatory Gap Scan + Pre-C5 Module Scan + MF23 Name-Version + EVOLVE CAP Refinement + Category U Sub_mermaid",
+            "C1-C7: Snapshot Diff + Post-Split Verification + ModifyStep Reconciliation + Name Version Sync + AISOP Exemptions + Token Budget + YELLOW Aging"
+        ],
+        "v1.19.0_changes": [
+            "B1-B4: Domain Protocol Detection + CREATE Requirement Extraction + CREATE Scope Confirm + Post-Generate MF Precheck",
+            "C1-C8: Domain Dependency + Version Roadmap + Custom Tool Annotation + Node Budget Advisory + Governance Hash Placeholder + D6/D9 CREATE Fair Scoring + QRG-CREATE Gate + CREATE Scenario Seeds"
+        ],
+        "v1.20.0_changes": [
+            "B1: CR1 Parameter Name Drift Detection — MF PRECHECK PARAMETER NAME ALIGNMENT CHECK",
+            "B2: CR3 SimulateStep Enum Value Anchoring — ENUM ANCHOR EXTRACTION",
+            "C1: CR2 AIAP.md Node Count Precision Check — MF6 NODE COUNT PRECISION CHECK",
+            "C2: CR4 MF20 Bypass Path Detection — BYPASS PATH DETECTION"
+        ],
+        "v1.21.0_changes": [
+            "B1: MF24 Protocol Document Consistency",
+            "B2: MF25 Tool Integration Completeness",
+            "B3: MF26 Enum Registry Consistency",
+            "B4: MF27 New Module Dependency Symmetry",
+            "B5: Score Trajectory Root-Cause Analysis",
+            "C1: EVOLVE CAP Target Node Count"
+        ],
+        "v1.22.0_changes": [
+            "P1: NO_SELF_MODIFY Protocol Rule — AIAP programs prohibited from modifying own governance files at runtime. Violation = Axiom 0 breach. Added as Protocol Appendix D.",
+            "P2: insights.json Schema — Protocol Appendix E defines optional insights.json format, 8 categories, write constraints, fingerprint dedup, anti-bloat controls.",
+            "B1: advisor insights sub-graph — 8th mutually exclusive sub-graph in advisor.aisop.json. Supports 3 operations: write (pipeline finding extraction + fingerprint dedup + version archive), consume (EVOLVE OPEN insight consumption with human-confirmed status changes), remove (MODIFY-level removal with zero-overhead restore). 7 functional nodes.",
+            "B2: insights.aisop.json template generation — advisor insights sub-graph can generate insights.aisop.json module (~6-8 nodes) for target programs requesting runtime insight recording.",
+            "B3: PostPipelineHook generic node — main.aisop.json pipeline sub-graph: ReviewStep → PostPipelineHook → endNode. Generic extension point that checks target AIAP.md for optional fields and delegates to advisor. Does not contain insights-specific text. Near-zero overhead when no optional fields present.",
+            "C1: MF-INSIGHTS orphan file check — generate.aisop.json MFAudit detects insights.json/insights.aisop.json without AIAP.md insights field. YELLOW advisory.",
+            "W category: 14 INSIGHTS mechanism scenarios (W-INS1~W-INS14)"
+        ],
+        "v1.23.0_changes": [
+            "B1: Rollback Safety Enhancement — RollbackVersion expanded to 7 steps: pre-rollback integrity check (JSON parse validation), atomic write safety (.tmp then rename), post-rollback SHA-256 verification, version history sync (mark rolled_back, not delete), completion gate with user summary.",
+            "B2: CREATE Mode Research Differentiation — StructureGate explicit EVOLVE/CREATE binary routing with research_objectives (domain_discovery/archetype_selection/scope_estimation). VisionGate NLP extraction guidance (semantic parsing for purpose/target_users/core_capabilities/differentiation/technical_requirements).",
+            "B3: Insights Consume Integration — EvolveStep step_insights loads OPEN insights before evolution. PATH/PARSE/SIZE guards. Per-insight user actions: Adopt (→LEVEL_B/C by severity), Defer (keep OPEN), Dismiss (→WONTFIX). SEVERITY: OPTIONAL per PL27.",
+            "B4: Data Flow Contract Standardization — Generate1 constraints document 5 key cross-module parameters (research_context, evolution_context, evolution_summary, evolution_plan, research_quality_context) with source→consumer mapping.",
+            "B5: Generate/Review Testing Boundary — ThreeDimTest ownership clarification: Generate ThreeDimTest (initial) → ReTest (user refinement) → AutoFixEngine (auto-fix). Explicit precedence documented in ReTest constraints.",
+            "C1: PostPipelineHook Delegation Contract — step2 enhanced with DELEGATION CONTRACT (advisor_type routing, target_path, pipeline_metadata passthrough) and RETURN CONTRACT (success/findings_count/warnings).",
+            "C2: MF-INSIGHTS Orphan Check Detail — 5-case detection logic: (a) orphan file, (b) orphan module, (c) normal initial, (d) full match, (e) N/A.",
+            "C3: QRG2 Cumulative Drift — Finalize loads 3 most recent versions from .version_history/, computes cumulative delta. RED < -0.3, YELLOW < -0.15."
+        ],
+        "v1.24.0_changes": [
+            "A1: insights.aisop.json — dedicated Creator self-observation module (7 nodes). Creator-specific observation rules: cross-module data flow, ThreeDimTest anomaly, Generate→Research fix rate, scenario coverage drift, EVOLVE CAP pressure, pipeline retry. Fingerprint dedup, anti-bloat controls (L1: 500 chars, L2: 20 OPEN cap, L3: archive). FlushToFile on ReviewStep.",
+            "A2: PL28 Mandatory Self-Observation — code-as-switch architecture. PipelineEntry step2 parallel self-observation code presence = insights ON. Code absence = insights OFF. Zero overhead when OFF. NO_CROSS_WRITE attribution rule.",
+            "A3: advisor insights sub-graph lifecycle redesign — write/consume/remove → enable/disable/consume. EnableInsights creates 3 sync points (module + main code + AIAP.md declaration). DisableInsights reverses all 3. Applicable to ANY AIAP program including Creator.",
+            "A4: PostPipelineHook removal — main pipeline sub-graph simplified: ReviewStep → endNode. PostPipelineHook function deleted. All references removed. main nodes 29→28.",
+            "W category deprecated 8 PostPipelineHook scenarios, retained 6 core INSIGHTS scenarios. New X category: 15 Insights Lifecycle scenarios (enable/disable/consume/NO_CROSS_WRITE/code-as-switch). S category +1 multi-mechanism interaction."
+        ],
+        "v1.26.0_changes": "Fix 7 OPEN insights: C1(INS-004) cross-module data flow tracing, C2(INS-005) final adjusted score, C3(INS-006) flow ordering pre-check, C4(INS-007) category stability rule, C5(INS-008) CREATE data contracts, C6(INS-009) loop safety analysis, C7(INS-010) post-copy identity validation. All LEVEL_C constraint additions, no node changes.",
+        "v1.25.1_changes": "D3 parameter completeness fix — added default fields to 32 parameters across 8 modules",
+        "v1.25.0_changes": [
+            "B1: PostExecution convergence node — main.aisop.json adds PostExecution node between all intent terminal nodes and endNode. All 13 intents converge through PostExecution, enabling universal PL28 self-observation coverage.",
+            "B2: PL28 observation migration — PipelineEntry step2 PL28 parallel self-observation code moved to PostExecution. Single observation point covers Create/Evolve pipeline AND all standalone intents (Validate, Simulate, Modify, etc.).",
+            "C1: main nodes 28→29, total nodes 170→171 — PostExecution adds 1 convergence node to main module.",
+            "C2: INS-011 ADOPTED — DESIGN/HIGH insight 'PL28 only covers Create/Evolve pipeline' resolved by PostExecution convergence architecture."
+        ],
+        "remaining_yellow": [
+            "Y1 (C5): High node counts (163 nodes) in main/advisor with valid fractal_exempt — structural, requires Evolution",
+            "Y2 (C7): Token estimates use ~ approximation — honest and acceptable",
+            "Y3 (D9): governance_hash not embedded in individual .aisop.json files — stored externally in AIAP.md"
+        ]
+    }
+}

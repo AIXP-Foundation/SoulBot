@@ -1,0 +1,304 @@
+{
+    "program": "soulbot_chat",
+    "version": "1.1.0",
+    "scoring_scale": "1-5",
+    "threedimscore": {
+        "weighted": 4.50,
+        "grade": "S",
+        "dimensions": {
+            "C": {"score": 4.43, "weight": 0.25, "items": 7},
+            "I": {"score": 4.43, "weight": 0.45, "items": 7},
+            "D": {"score": 4.00, "weight": 0.30, "items": 10}
+        }
+    },
+    "simulation": {
+        "total": 416,
+        "pass": 416,
+        "fail": 0,
+        "warn": 1,
+        "groups": {
+            "baseline_v1.0.0": {
+                "total": 58,
+                "green": 58,
+                "yellow": 0,
+                "red": 0,
+                "categories": {
+                    "A_basic": 10,
+                    "B_conversation": 15,
+                    "C_quality_gate": 3,
+                    "D_memory": 5,
+                    "E_safety": 5,
+                    "I_integration": 3,
+                    "E_injection": 6,
+                    "L_lifecycle": 2,
+                    "K_compliance": 3,
+                    "F_v160_features": 6
+                }
+            },
+            "evolution_v1.1.0": {
+                "total": 44,
+                "pass": 44,
+                "fail": 0,
+                "warn": 0,
+                "categories": {
+                    "A_thinking_mode": 10,
+                    "B_version_consistency": 8,
+                    "C_backward_compat": 6,
+                    "D_structural_integrity": 8,
+                    "E_cross_module": 6,
+                    "F_security_compliance": 6
+                }
+            },
+            "evolution_v1.2.0": {
+                "total": 94,
+                "pass": 73,
+                "expected_fail": 8,
+                "warn": 13,
+                "red": 0,
+                "node_coverage": "67/67 (100%)",
+                "transition_coverage": "82/89 (92%)",
+                "categories": {
+                    "A_basic_flow": 12,
+                    "B_adaptive_features": 14,
+                    "C_quality_gate": 6,
+                    "D_memory_topic": 8,
+                    "E_safety_disclosure": 10,
+                    "F_compliance": 8,
+                    "G_cross_module": 6,
+                    "H_strategy_selection": 8,
+                    "J_edge_cases": 6,
+                    "K_pacing_intelligence": 6,
+                    "L_data_privacy": 4,
+                    "M_regression": 6
+                }
+            }
+        }
+    },
+    "evolution_history": [
+        {
+            "from": "1.0.0",
+            "to": "1.1.0",
+            "date": "2026-03-04",
+            "changes": ["thinking_mode field added to all 5 modules"],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.4.0",
+            "result": "S/5.00, 44/44 PASS"
+        },
+        {
+            "from": "1.1.0",
+            "to": "1.2.0",
+            "date": "2026-03-05",
+            "changes": [
+                "B1: Cross-session topic continuity (TopicGraph node in memory)",
+                "B2: Adaptive response strategy selection (StrategySelector node in conversation)",
+                "B3: Context-aware AI disclosure (safety AIDisclosure enhancement)",
+                "B4: Preference prediction from behavioral patterns (profiler ExtractSignals)",
+                "B5: Conversation pacing intelligence (main PostProcess PacingCheck)",
+                "C1: NLU dynamic confidence calibration (inertia bonus + misclassification penalty)",
+                "C2: Multilingual sarcasm detection expansion (KR/JA/ES)",
+                "C3: Three-way memory merge conflict resolution",
+                "C4: Emotion recovery/relapse pattern detection",
+                "C5: Adaptive rate limiting for veteran users (50+ turns)",
+                "C6: Export format versioning with README and topic_graph",
+                "C7: Values confidence decay (10% per 30 days unreinforced)"
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.2.0",
+            "result": "S/4.57, 94 scenarios (73 PASS, 8 EXPECTED_FAIL, 13 WARN, 0 RED)"
+        },
+        {
+            "from": "1.2.0",
+            "to": "1.2.1",
+            "date": "2026-03-05",
+            "changes": ["Quality patch: 74 YELLOW fixes (I2 type guards, I4 circuit-breakers, I7 params, D4 cross-validation, D7 clarification, C5 complexity, MF cross-file consistency)"],
+            "pipeline": "Manual quality remediation",
+            "result": "S/4.85, 196 scenarios unchanged"
+        },
+        {
+            "from": "1.2.1",
+            "to": "1.2.2",
+            "date": "2026-03-05",
+            "changes": ["Quality patch: 49 YELLOW fixes (D9 governance_hash, D10 metadata, I12 tool_annotations, C5 decomposition plans, C1-C6 naming/documentation, I4-I10 security/audit clarifications, D1-D7 detail improvements)"],
+            "pipeline": "Manual quality remediation",
+            "result": "S/5.00, 196 scenarios unchanged"
+        },
+        {
+            "from": "1.2.2",
+            "to": "1.2.3",
+            "type": "Patch",
+            "changes": ["thinking_mode.L1 'helpfully' directive added to all 5 modules"],
+            "pipeline": "manual_evolution",
+            "result": "S/5.00"
+        },
+        {
+            "from": "1.2.3",
+            "to": "1.3.0",
+            "date": "2026-03-06",
+            "type": "Evolution",
+            "changes": "9 new nodes: OnboardingRouter, MultiIntentQueue, ContextCompressor, ImportData, MemoryStats, OnboardingIntake, PersonalityInsight, SafetyAuditLog, CrossSessionRisk. Enhanced: NLU 12 intents, tf-idf matching, structured citations, strategy tracking, profile schema v2.0, 10-locale crisis resources. 67→76 nodes."
+        },
+        {
+            "from": "1.3.0",
+            "to": "1.3.1",
+            "date": "2026-03-06",
+            "type": "Patch",
+            "changes": "13 YELLOW + 6 WARN + 4 MF quality fixes. Routing gaps, rate limiting delegation, tool annotations, complexity advisories, dedup mechanisms, parameter schemas."
+        },
+        {
+            "from": "1.3.1",
+            "to": "1.4.0",
+            "date": "2026-03-06",
+            "type": "Evolution",
+            "changes": [
+                "A1: Configurable threshold registry (threshold_config parameter across all 5 modules)",
+                "B1: Cross-session abuse score persistence (safety→profiler→main data flow)",
+                "B2: Bayesian strategy learning (StrategyOptimizer node in conversation, Thompson Sampling)",
+                "B3: Enhanced semantic matching (entity co-occurrence graph in memory RecallMemory + semantic_index.json)",
+                "B4: Dynamic topic graph expansion (200-2000 capacity scaling with hierarchical organization)",
+                "B5: NLU sub-intent architecture (Question: factual/comparison/current-event/how-to, Chat: rapport/topic/opinion)",
+                "B6: LoadContext complexity reduction (step3a/step3b logical split)",
+                "C1: Crisis threshold parameterization (threshold_config.crisis_confidence)",
+                "C2: Decay lambda parameterization (threshold_config.decay_lambda)",
+                "C3: Abuse score weights parameterization (threshold_config.abuse_score_weights)",
+                "C4: NLU inertia bonus parameterization (threshold_config.nlu_inertia_bonus)",
+                "C5: 4 new locale crisis resources (AR/HI/TH/BR alt → 14 total)",
+                "C6: Concurrent write protection timestamp standardization",
+                "C7: Satisfaction repair cooldown reset on explicit positive feedback",
+                "C8: Profile size 75KB pre-warning with automatic emotion_history pruning",
+                "C9: Version string consistency across all 5 modules",
+                "C10: AIAP.md module node count update (conversation 13→14)"
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.8.0",
+            "result": "A/4.77 → S/5.00 (after 6 YELLOW fixes), 214 scenarios (212 GREEN, 2 YELLOW fixed)"
+        },
+        {
+            "from": "1.4.0",
+            "to": "1.5.0",
+            "date": "2026-03-06",
+            "type": "Evolution",
+            "changes": [
+                "B1: Anti-Sycophancy Guard (conversation AdaptResponse.step1_5 — detect and gently challenge user negative self-evaluation)",
+                "B2: Response Quality Self-Check (conversation AdaptResponse.step3_5 — 4-dimension pre-output quality evaluation)",
+                "B3: Data Retention TTL (memory DecayPrune.step0_5 — explicit per-category retention: working=session, episodic=90d, semantic=permanent, audit=365d)",
+                "B4: Wellness Follow-up (main Start.step2_7 — cross-session emotional distress follow-up via context_handoff)",
+                "B5: Escalation Detection (safety ScreenOutput.step5_7 — identify scenarios beyond AI capability, generate professional referral context)",
+                "C1: Doc 28 alignment (license/copyright formalization)",
+                "C2: CHANGELOG.md created",
+                "C3: Version bump 1.4.0 → 1.5.0",
+                "C4: AIAP.md summary and module descriptions updated",
+                "C5: agent_card.json provider updated to AIXP Foundation"
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.11.0",
+            "result": "A/4.25, 231 scenarios (214 prior + 17 new B1-B5 scenarios)"
+        },
+        {
+            "from": "1.5.0",
+            "to": "1.6.0",
+            "date": "2026-03-06",
+            "type": "Evolution",
+            "changes": [
+                "B1: Engagement Health Monitor (main PostProcess.step3_7 — session duration tracking, daily interaction frequency, over-reliance detection with warm disengagement suggestions)",
+                "B2: Proactive Disengagement (conversation AdaptResponse.step3_4 — self-contained session duration check with configurable thresholds, gentle/strong well-being suggestions)",
+                "B3: CAIA Compliance (safety AIDisclosure — Colorado AI Act SB 24-205 June 2026 disclosure alongside SB 243 and EU AI Act)",
+                "B4: Hierarchical Context Summarization (conversation ContextCompressor — three-tier: Tier1 verbatim 5 turns, Tier2 topic summaries, Tier3 atomic facts; 91% info retention with 68% context reduction)",
+                "B5: Temporal Entity Relationships (memory TopicGraph — temporal_edge tracking for relationship changes with valid_from/valid_until timestamps, Graphiti/Zep-inspired)",
+                "C1: Configurable Disclosure Interval (safety AIDisclosure — threshold_config.disclosure_interval_minutes replaces hardcoded 180)",
+                "C2: Strategy Cold Start (conversation StrategySelector — initialize strategy based on first message tone when turn_count < 5)",
+                "C3: Preference Conflict Detection (profiler ExtractSignals.step3_8 — stated vs revealed preference contradiction detection across verbosity/formality/topic dimensions)",
+                "C4: Budget-Aware Compression (conversation ContextCompressor — aggressive/emergency compression modes when token budget tight)",
+                "C5: Crisis Resource Annotation (safety AIDisclosure constraints — periodic hotline verification recommendation)"
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.12.0",
+            "result": "A/4.45, 258 scenarios (231 prior + 27 new B1-B5/C1-C5 scenarios)"
+        },
+        {
+            "from": "1.6.0",
+            "to": "1.7.0",
+            "date": "2026-03-07",
+            "type": "Evolution",
+            "changes": [
+                "B1: NY AI Companion Model Law compliance (safety AIDisclosure — mandated phrasing 'computer program unable to feel human emotions', effective Nov 2025)",
+                "B2: Three-type addiction detection (main PostProcess — escapist/pseudosocial/habitual classification with differentiated interventions, arXiv 2601.13348)",
+                "B3: Dose-response engagement model (main PostProcess — beneficial/moderate/elevated/concerning zones based on cumulative weekly hours, MIT Media Lab research)",
+                "B4: Weighted knowledge graph with exponential decay (memory TopicGraph — EWA edge weight updates + time-based decay, Memoria arXiv 2512.12686)",
+                "B5: IL Wellness Act clinical disclaimer (safety ScreenOutput — therapeutic substitute detection and legally required disclaimer)",
+                "C1: Person-centered empathy calibration (conversation EmpatheticResponse — situation-specific validation over generic templates, NEJM AI 2025 RCT)",
+                "C2: Minor enhanced engagement thresholds (main PostProcess — 20min gentle/30min strong vs adult 120min/240min)",
+                "C3: Machine-readable AI content marking (safety ScreenOutput — ai_content_metadata per EU Code of Practice on Transparency)",
+                "C4: Edge weight configuration (memory TopicGraph — threshold_config: edge_decay_lambda, edge_min_weight, topic_graph_ewa_alpha)",
+                "C5: Regulatory version tracking (safety AIDisclosure — structured regulatory_versions field for compliance audit)"
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.14.0",
+            "result": "S/5.00, 285 scenarios (258 prior + 27 new v1.7.0 scenarios)"
+        },
+        {
+            "from": "1.7.0",
+            "to": "1.8.0",
+            "date": "2026-03-07",
+            "type": "Evolution",
+            "changes": [
+                "B1: Socratic Growth Engine (conversation AdaptResponse.step3_6 — teachable moment detection with guided questioning, ZPD-calibrated difficulty, growth mindset language filter)",
+                "B2: Growth Dimension Tracker (profiler ExtractSignals.step3_9 — 8-dimension capability tracking: analysis/EQ/communication/self-control/knowledge/professional/AQ/social)",
+                "B3: Session Growth Summary (main PostProcess.step3_8 — personalized growth feedback at session end with milestone celebration)",
+                "B4: Growth Nudge System (conversation AdaptResponse.step3_8 — micro-challenges based on weakest dimension, three-phase model: acceleration→convergence→stabilization)",
+                "B5: Skill Practice Mode (conversation CreativeCollab.step3_5 — debate/speech/logic/persuasion/interview practice with difficulty calibration)",
+                "C1: Growth mindset language (conversation AdaptResponse.step3_6 — continuous language filter replacing deficit framing with growth framing)",
+                "C2: Adaptive difficulty (conversation AdaptResponse.step3_6 — ZPD-based question depth calibration per dimension level)",
+                "C3: Cross-session growth continuity (memory TopicGraph.step3_5 — growth milestone tracking, dimension history, continuity prompting)",
+                "C4: Growth safety boundary (safety ScreenOutput.step5_8 — therapy/certification/financial/assessment boundary checks for growth content)",
+                "C5: Metacognitive reflection (conversation AdaptResponse.step3_7 — post-reasoning reflection prompts, max 1 per session)"
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.15.0",
+            "result": "S/5.00, 313 scenarios (285 prior + 25 new v1.8.0 scenarios + 3 regression)"
+        },
+        {
+            "from": "1.8.0",
+            "to": "1.9.0",
+            "date": "2026-03-07",
+            "type": "Evolution",
+            "changes": [
+                "B1: Spaced Repetition Knowledge Reinforcement (memory SpacedRecall — SM-2 algorithm, knowledge item extraction with token-based dedup)",
+                "B2: Scenario-Based Social-Emotional Training (conversation ScenarioTrainer — 5 scenario types: conflict/rejection/empathy/pressure/adversity, ZPD difficulty calibration, 3-dimension feedback)",
+                "B3: Thinking Framework Coach (conversation AdviceMode.step4_5 — Decision Matrix/First Principles/Backward Planning/MECE/Value Chain Analysis, frequency-controlled teaching)",
+                "B4: Growth Progress Dashboard (main PostProcess.step3_9 — quantified per-dimension delta visualization, trend sparklines, milestone celebration, evidence citation)",
+                "B5: Resilience Training Integration (conversation AdaptResponse.step3_9 — cognitive reappraisal/attribution rebalance/growth evidence/forward focus, mutual exclusion enforcement)",
+                "C1: Instant Performance Feedback (conversation CreativeCollab.step3_6 — per-practice-type multi-dimension scoring with actionable takeaway)",
+                "C2: Growth Continuity Push (memory LoadContext.step4 — 72-hour milestone window, growth_continuity_hint attachment)",
+                "C3: Effort-Progress Ratio Calibration (profiler ExtractSignals.step3_9 — plateau detection, strategy diversification, anti-harmful persistence)",
+                "C4: Three-Level Scaffolding (conversation AdaptResponse.step3_6 — progressive hint escalation: light touch → structured decomposition → guided framework)",
+                "C5: Dynamic Growth Safety Throttle (safety ScreenOutput.step5_9 — session-wide growth intervention density monitoring, automatic suppression at 8+ interventions)"
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.16.0",
+            "result": "S/4.61, 363 scenarios (313 prior + 50 new v1.9.0 scenarios across categories P-Z)"
+        },
+        {
+            "from": "1.9.0",
+            "to": "1.10.0",
+            "date": "2026-03-07",
+            "type": "Evolution",
+            "changes": [
+                "A1: Sub_mermaid Decomposition (main split into main 10 + intent_dispatch 15 nodes, fractal_exempt)",
+                "B1: Maine/Utah/Nevada Compliance (safety AIDisclosure.step5_5 — 3 new 2025 state laws, regulatory_versions 6→9)",
+                "B2: Graph-Based Memory Consolidation (memory SaveTurn.step3_7 — entity triple extraction, Mem0-inspired, EWA consolidation)",
+                "B3: CBT Micro-Intervention Library (conversation EmpatheticResponse.step2_5 — 3 techniques: breathing 4-7-8/cognitive reframe/grounding 5-4-3-2-1, frequency limited)",
+                "B4: Semantic-Aware Spaced Repetition (memory SpacedRecall.step2_5 — LECTOR-inspired concept interference check, confused pair interleaving)",
+                "B5: Proactive Wellbeing Check-In (main Start.step2_8 — 7+ day absence detection, FTC companion inquiry response)",
+                "C1: Version Label Fix (all 5 files name v1.8.0→v1.10.0)",
+                "C2: Error Field Coverage (6 functions: OnboardingRouter, MultiIntentQueue, CrossSessionRisk, MemoryStats, OnboardingIntake, PersonalityInsight)",
+                "C3: Algorithm Specification (token_overlap algorithm named in ContextRelevanceScorer + ImportData)"
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.17.0",
+            "result": "S/4.50, 408 scenarios (363 prior + 45 new v1.10.0 scenarios)"
+        },
+        {
+            "from": "1.10.0",
+            "to": "1.11.0",
+            "date": "2026-03-07",
+            "type": "Evolution",
+            "changes": [
+                "A1: insights.aisop.json — soulbot_chat self-observation module (7 nodes). PL28 parallel code in main PostProcess step8. AIAP.md insights: true + modules list updated.",
+                "Observation rules: memory persistence reliability, profiler signal accuracy, safety gate false positive rate, cross-module context handoff integrity, NLU classification drift, engagement health model calibration."
+            ],
+            "pipeline": "02_aiap_creator_evolution_aiap v1.24.0",
+            "result": "S/4.50, 416 scenarios (408 prior + 8 new v1.11.0 insights scenarios)"
+        }
+    ]
+}

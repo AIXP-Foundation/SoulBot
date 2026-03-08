@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code local config
+.claude/
+
+# Environment (contains secrets)
+**/.env
+!**/.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test / Cache
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Node (frontend)
+node_modules/
+
+# SoulBot runtime data
+data/
+.soulbot_schedules.json
+*.db
+*.sqlite
+
+# Windows reserved device names
+nul

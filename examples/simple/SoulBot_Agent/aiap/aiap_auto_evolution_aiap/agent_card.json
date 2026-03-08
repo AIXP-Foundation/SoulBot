@@ -1,0 +1,88 @@
+{
+  "name": "aiap_auto_evolution",
+  "description": "AIAP Auto Evolution — automated multi-round AIAP evolution orchestrator. Plans evolution direction per round (web search + anti-over-engineering + human habit alignment), executes via nested Creator intent execution, validates quality. AUTO/SEMI/SUPERVISED modes. Preserves successful rounds on failure.",
+  "version": "1.0.0",
+  "provider": "AIXP Foundation AIXP.dev | SoulBot.dev",
+  "pattern": "B+G",
+  "tags": [
+    "aiap",
+    "auto-evolution",
+    "automation",
+    "batch-evolution",
+    "orchestrator"
+  ],
+  "skills": [
+    {
+      "id": "evolve_batch",
+      "name": "BatchEvolve",
+      "description": "Evolve an AIAP program for N rounds automatically or with user supervision.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "status",
+      "name": "Status",
+      "description": "Check progress of ongoing evolution batch.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "abort",
+      "name": "Abort",
+      "description": "Stop an ongoing evolution batch, preserving successful rounds.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "resume",
+      "name": "Resume",
+      "description": "Resume an interrupted evolution batch from where it stopped.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "history",
+      "name": "History",
+      "description": "View past evolution batch results and quality trajectories.",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "trust_level": {
+    "level": "T4",
+    "authentication": "oauth2"
+  },
+  "tools": [
+    "file_system",
+    "google_search",
+    "web_browser"
+  ],
+  "modules": [
+    "aiap_auto_evolution.main",
+    "aiap_auto_evolution.planner",
+    "aiap_auto_evolution.executor",
+    "aiap_auto_evolution.validator"
+  ],
+  "tool_dirs": [
+    {
+      "path": "AIAP_Tools/aiap_creator_evolution_aiap",
+      "program": "aiap_creator v1.24.0"
+    }
+  ],
+  "status": "active",
+  "safety_card": {
+    "risk_level": "elevated",
+    "risk_justification": "T4 trust level with full workspace file_system write access. Executes nested Creator pipeline which modifies target programs. Multi-round automation increases blast radius of quality issues.",
+    "data_handling": "Pre-round snapshots for rollback safety. Evolution reports persisted to target program directories. No external data sharing.",
+    "limitations": "Text-only. Cannot auto-evolve (infinite nesting blocked). Max 10 rounds per batch (configurable cap). AUTO mode stops on first failure."
+  },
+  "_generated": {
+    "generator": "AIAP Creator v1.24.0",
+    "timestamp": "2026-03-07T18:00:00Z"
+  }
+}

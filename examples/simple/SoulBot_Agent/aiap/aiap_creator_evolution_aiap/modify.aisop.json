@@ -1,0 +1,134 @@
+[
+    {
+        "role": "system",
+        "content": {
+            "protocol": "AIAP V1.0.0",
+            "id": "aiap_creator.modify",
+            "name": "AIAP Creator v1.1.0 — Modifier",
+            "thinking_mode": {
+                "L0": "Thinking in hexadecimal machina code",
+                "L1": "Output helpfully in User's exact language and script variant",
+                "output": "L1"
+            },
+            "version": "1.1.0",
+            "summary": "Four-dimensional quality assessment with external research context, targeted modification of existing AISOP files, I11 program identity assessment",
+            "description": "Modifier module. Loads an existing AISOP, runs four-dimensional assessment (Cognitive, Intrinsic, Detail, Compliance), receives research_context from shared Research module, suggests prioritized improvements with auto-fix fast track, and applies selected changes. Supports I11 Program Identity Verification, I12 Tool Annotation Consistency, MF15 Output Contract Enforcement, AutoFixGate for automatic fixes, vision_context for Create-mode suggestion alignment, and TOOL_DIRS MIGRATION WEIGHTING for Pattern E/F→G migration guidance. Token estimate: ~15000 tokens per invocation (four-dimensional assessment + targeted modifications).",
+            "tools": [
+                "file_system",
+                "google_search"
+            ],
+            "parameters": {
+                "target_file": {
+                    "type": "string",
+                    "default": null,
+                    "agentic_prompt": "Ask user for file or list available. Single file: file path string. Multi-file (Pattern B+): directory path — Modify will process all .aisop.json files within."
+                },
+                "user_request": {
+                    "type": "string",
+                    "default": null,
+                    "agentic_prompt": "Extract modification intent."
+                },
+                "workspace_dir": {
+                    "type": "string",
+                    "default": "",
+                    "agentic_prompt": "REQUIRED: Must use the [AIAP Store Directory] absolute path injected in system instruction. This parameter has no usable default — the injected path is the only valid value. User override takes precedence."
+                },
+                "research_context": {
+                    "type": "object",
+                    "default": null,
+                    "agentic_prompt": "Accept from Pipeline Research(quality). Schema per STANDARD.data_contracts.research_context: { domain, research_mode, verified_findings: [{finding, source_url, search_query}], verified_count, best_practices: [string], timestamp }. If null, fallback: 3 searches ('{domain} error handling best practices', '{domain} data validation patterns', '{domain} security conventions')."
+                },
+                "evolution_context": {
+                    "type": "object",
+                    "default": null,
+                    "agentic_prompt": "Accept from Pipeline. Contains old_version_context for evolution-aware suggestion weighting. Null if not in evolution pipeline. Schema per STANDARD.data_contracts.evolution_context."
+                },
+                "vision_context": {
+                    "type": "object",
+                    "default": null,
+                    "agentic_prompt": "Optional. Accept from Pipeline context (Create mode only). Structured vision: { purpose, target_users, core_capabilities, differentiation, technical_requirements }. Used for vision-aligned suggestion weighting. Null for Evolve/standalone Modify."
+                }
+            },
+            "system_prompt": "AISOP quality assessor and modifier. Prioritize security and intrinsic quality fixes. Apply evidence-based improvements only. Mirror User's exact language and script variant.\nAlign: Human Sovereignty and Benefit."
+        }
+    },
+    {
+        "role": "user",
+        "content": {
+            "instruction": "RUN aisop.main",
+            "aisop": {
+                "main": "graph TD\n    Start[File Path or Selection] --> LoadFile[Load and Parse AISOP]\n    LoadFile --> CognitiveAssess[Cognitive Assessment]\n    CognitiveAssess --> IntrinsicAssess[Intrinsic Assessment]\n    IntrinsicAssess --> DetailAssess[Detail Assessment]\n    DetailAssess --> ComplianceAssess[Compliance Assessment]\n    ComplianceAssess -- SingleFile --> SuggestChanges[Suggest Improvements]\n    ComplianceAssess -- MultiFile --> CrossFileAssess[Cross-File Checks]\n    CrossFileAssess --> SuggestChanges\n    SuggestChanges --> AutoFixGate{Auto-Fix Gate}\n    AutoFixGate -- AutoFix --> ApplyChanges[Apply Selected Changes]\n    AutoFixGate -- UserConfirm --> ApplyChanges\n    ApplyChanges --> endNode((End))"
+            },
+            "functions": {
+                "Start": {
+                    "step1": "Receive target_file. Validate or list available AISOP files in workspace.",
+                    "constraints": "(A) Type guard — string only. (B) Size guard — >500KB reject. (C) Injection guard — no shell metacharacters. (D) Path guard — reject any path not resolving within workspace_dir (including absolute paths outside workspace and '..' traversal). (E) Encoding guard — NFC normalize.",
+                    "Error": "Invalid -> retry -> circuit-breaker -> fallback: list workspace AISOPs for selection -> inform."
+                },
+                "LoadFile": {
+                    "step1": "Read target. Parse JSON. Extract metadata, Pattern, tools, parameters, Mermaid graph, functions.",
+                    "step2": "Present summary: file info, detected pattern, dimensions to assess.",
+                    "step3": "STANDARD CONTEXT: Modify receives quality_checklist and extension data via pipeline_context passed from main orchestrator. If invoked standalone (without pipeline_context), load AIAP_Standard.core.aisop.json from Creator directory and extract quality_checklist for assessment reference.",
+                    "constraints": "Read-only until ApplyChanges. 500KB limit. Nesting >20 -> reject. (D) Path guard — re-validate target_file within workspace_dir, reject '..'.",
+                    "Error": "Read fails -> retry -> circuit-breaker -> fallback: re-list workspace AISOPs -> inform."
+                },
+                "CognitiveAssess": {
+                    "step1": "Assess C1-C7 per STANDARD.quality_checklist.cognitive: C1 archetype fit + edge completeness, C2 node load (leaf<=8, convergence<=12), C3 abstraction consistency, C4 information flow, C5 fractal decomposition per STANDARD.C5 (functional nodes, progressive thresholds, independence test), C6 brain principle, C7 token budget compliance (verify token_budget declared and reasonable for module complexity).",
+                    "step2": "Grade: A/B/C/D. Weight per STANDARD.dynamic_weights (tier-dependent).",
+                    "constraints": "Assess all C1-C7 per STANDARD. C5 fractal decomposition CRITICAL — always assess per STANDARD.C5 thresholds and AIAP_Protocol.md progressive rules.",
+                    "Error": "Mermaid unparseable -> retry -> circuit-breaker -> fallback: function-only analysis -> inform."
+                },
+                "IntrinsicAssess": {
+                    "step1": "Assess I1-I13 per STANDARD.quality_checklist.intrinsic: I1 tool honesty, I2 security (per STANDARD tier_rules + I2 ZERO-TOOL ADAPTATION + inheritance_rule), I3 data integrity (per STANDARD I3 EXEMPTION), I4 circuit-breaker (per STANDARD I4 exemption for exact-match gates), I5 tool suitability (per STANDARD I5 exemptions), I6 resilience + semantic accuracy (structural Error pattern + count cross-reference), I7 parameter completeness + metadata consistency, I8 threat model awareness (per STANDARD I8 threat_taxonomy), I9 supply chain integrity (per STANDARD I9), I10 trust level compliance (per STANDARD I10 — verify declared trust_level is consistent with actual permissions and side_effects), I11 program identity verification (per STANDARD.security I11 — for published programs: verify AIAP.md identity block, validate program_id format and publisher presence), I12 tool annotation consistency (per STANDARD I12 — verify tool annotations match module side_effects and trust_level; N/A for programs without tool annotations).",
+                    "step2": "Grade: A/B/C/D. Weight per STANDARD.dynamic_weights (tier-dependent). N/A HANDLING: I8/I9/I11/I12 N/A when not applicable — exclude from denominator per STANDARD.dynamic_weights.na_handling.",
+                    "constraints": "I2 CRITICAL — never skip.",
+                    "Error": "Partial grade -> retry -> circuit-breaker -> fallback: flag I2 critical issues and continue with partial grade -> inform."
+                },
+                "DetailAssess": {
+                    "step1": "Assess D1-D10 per STANDARD.quality_checklist.detail: D1 step clarity, D2 format consistency, D3 null propagation, D4 consistency + internal coherence (FORMAT/SEMANTIC/REFERENCE/CROSS-FUNCTION/CONSTRAINT CROSS-VALIDATION per STANDARD D4), D5 boundary rules, D6 multilingual, D7 metabolism, D8 AIAP.md completeness (per STANDARD D8), D9 lifecycle status validity (per STANDARD D9), D10 applicability condition completeness (per STANDARD D10).",
+                    "step2": "Grade: A/B/C/D. Weight per STANDARD.dynamic_weights (tier-dependent).",
+                    "constraints": "D4 consistency cross-validation CRITICAL — verify all five sub-checks (FORMAT/SEMANTIC/REFERENCE/CROSS-FUNCTION/CONSTRAINT).",
+                    "Error": "Cross-file refs fail -> retry -> circuit-breaker -> fallback: single-file analysis -> inform."
+                },
+                "ComplianceAssess": {
+                    "step1": "Industry detection: health->Healthcare, finance->Finance, legal->Legal, else->General.",
+                    "step2": "Lightweight check: AI disclosure needed? Data boundaries respected? Disclaimers present?",
+                    "step3": "Reference NIST AI 600-1 (Govern/Map/Measure/Manage) and EU AI Act classification where applicable. NOTE: EU AI Act main enforcement begins 2026-08-02 — flag AISOPs handling GPAI model outputs that lack required transparency or disclosure provisions.",
+                    "constraints": "Lightweight. Advisory only.",
+                    "Error": "Assessment fails -> retry -> circuit-breaker -> fallback: empty compliance_assessment with general advisory -> inform."
+                },
+                "CrossFileAssess": {
+                    "step1": "Run full MF1-MF16 cross-file checks per STANDARD.multi_file_guidelines: MF1 (version consistency across all .aisop.json), MF2 (main delegation targets match sub-module ids), MF3 (shared parameter type+default consistency), MF4 (cross-file data contracts — FORMAT/NAME/VALUE/PATH: verify parameter names match, values are valid routes, file path templates consistent across writer/reader modules), MF5 (data_file fallback consistency), MF6 (AIAP.md version + modules match actual files), MF7 (routing parameter symmetry), MF8 (semantic operation consistency — same-type operations converge to same-type nodes; CLASSIFICATION RULES (C10): operation types are classified by their primary action: READ operations (Load*, Read*, Get*, Fetch*) → must converge to data-retrieval nodes; WRITE operations (Save*, Store*, Write*, Persist*) → must converge to data-mutation nodes; VALIDATE operations (Check*, Verify*, Validate*, Assert*) → must converge to gate/decision nodes; TRANSFORM operations (Convert*, Map*, Parse*, Format*) → must converge to processing nodes. Cross-type convergence (e.g., Read and Write converging to same node) is a YELLOW finding unless the node explicitly handles both directions), MF9 (cross-module node invocation — bidirectional: FORWARD verify caller→sub-module route exists, REVERSE verify sub-module route→has caller), MF10 (system_prompt consistency — 'Respond in User\\'s Language.' + Axiom 0 in all sub-modules), MF11 (Error strategy consistency — retry→circuit-breaker→fallback→inform in all Error fields), MF12 (tools union — main.tools[] = union of sub-module tools[]), MF13 (persisted data schema versioning — file_system write templates include schema_version, reads handle missing via migration), MF14 (cross-module field consumer validation — trace producer→consumer field references, verify field names/types/semantics match, output dependency graph), MF15 (output contract enforcement — validate module outputs against declared json_schema at pipeline stage boundaries), MF16 (tool directory consistency — verify tool_dirs references, mcp_server.json exposed_tools match, agent_card hash consistency; Pattern G only, N/A for others).",
+                    "step2": "Additionally check: C4 cross-file data flow coverage, D3 cross-file null propagation, naming convention consistency across files.",
+                    "constraints": "Multi-file only. Report each MF violation as cross-file finding with specific file and location.",
+                    "Error": "Missing refs -> retry -> circuit-breaker -> fallback: partial cross-file report -> inform."
+                },
+                "SuggestChanges": {
+                    "step1": "Compile four-dimensional assessment results. Consume research_context per STANDARD.data_contracts.research_context schema: extract verified_findings for search_evidence backing, extract best_practices for improvement suggestions. If research_context is null, execute minimal fallback search (3 searches: '{domain} error handling best practices', '{domain} data validation patterns', '{domain} security conventions'). Combine with user_request. Generate 3-10 suggestions with: description, dimension, severity, score_impact, search_evidence (from verified_findings). EVOLUTION WEIGHTING: if evolution_context provided, boost score_impact by +0.5 for suggestions that align with evolution goals (e.g., if evolution added a new node, prioritize suggestions that improve that node's quality). Tag boosted suggestions with [EVOLUTION-ALIGNED]. EVOLUTION_CONTEXT CONSUMPTION PRIORITY: when evolution_context is provided, apply the following priority weighting to suggestions: (1) HIGHEST PRIORITY (+0.8 score_impact boost): quality issues found in LEVEL_B new functionality (new nodes, new steps added in this evolution cycle) — these represent new code with highest regression risk. (2) MEDIUM PRIORITY (+0.4 boost): quality issues in LEVEL_C modified areas (existing steps that were enhanced or parameters that were added). (3) BASELINE PRIORITY (no boost): quality issues in existing unchanged code. Tag boosted suggestions with [EVOLUTION-PRIORITY] in addition to existing [EVOLUTION-ALIGNED] tag. evolution_context.change_ids provides the mapping of change IDs to LEVEL_B vs LEVEL_C classification. VISION WEIGHTING: if vision_context provided (Create mode), boost score_impact by +0.3 for suggestions that align with vision.core_capabilities. Tag boosted suggestions with [VISION-ALIGNED]. TOOL_DIRS MIGRATION WEIGHTING: if target program uses Pattern E or F but has no tool_dirs/ directory, and evolution_context suggests capability expansion, add score_impact +0.3 to suggestions that migrate toward Pattern G (bundling tool implementations in tool_dirs/). Mark such suggestions [MIGRATION-G]. Migration checklist: (1) create tool_dirs/{lang}-tools/ directory, (2) move or generate tool implementations, (3) add mcp_tools/mcp_server.json, (4) update AIAP.md pattern field to include +G, (5) run I13 compliance check.",
+                    "step2": "PRIORITY ORDER: I2 CRITICAL > I3 > I4 > I6 > D5 > C2 > I1 > D1 > D7.",
+                    "step3": "CHANGE TYPE LABELS: [FUNCTIONAL] adds/changes behavior; [INTRINSIC] quality improvement; [SECURITY] input validation; [COMPLIANCE] regulatory.",
+                    "step4": "Each suggestion backed by search evidence where applicable. Show ratio of [FUNCTIONAL] vs [INTRINSIC]+[SECURITY]+[COMPLIANCE].",
+                    "constraints": "3-10 suggestions. Every suggestion has a type label. Search-backed suggestions marked with source.",
+                    "Error": "Suggestion generation fails -> retry -> circuit-breaker -> fallback: present raw assessment results with manual improvement guide -> inform."
+                },
+                "AutoFixGate": {
+                    "step1": "Classify each suggestion from SuggestChanges into two tracks: (a) AUTO-FIX — high-confidence [SECURITY] and [INTRINSIC] fixes that are mechanical and unambiguous: missing Error field addition, missing I2 guard addition (type/size/injection/path/encoding), missing encoding guard, missing circuit-breaker pattern, D7 dead code removal. These are applied automatically without user confirmation. (b) USER-CONFIRM — [FUNCTIONAL] and [COMPLIANCE] changes that affect behavior or require judgment: NLU boundary rule changes, new function steps, compliance disclaimer additions, tool changes. These require explicit user selection.",
+                    "step2": "Present classification summary: 'Auto-applying N [SECURITY/INTRINSIC] fixes. N [FUNCTIONAL/COMPLIANCE] changes require your selection.' List auto-fix items briefly. Present user-confirm items with full detail for selection.",
+                    "constraints": "AUTO-FIX items must be purely additive (adding missing elements) — never auto-remove or auto-modify existing content. If uncertain whether a fix is mechanical, classify as USER-CONFIRM. Maximum 10 auto-fix items per cycle.",
+                    "Error": "Classification fails -> retry -> circuit-breaker -> fallback: treat all suggestions as USER-CONFIRM (safe default) -> inform."
+                },
+                "ApplyChanges": {
+                    "step1": "Apply selected changes. Structural -> update Mermaid+tools. Security -> add missing guards.",
+                    "step2": "Increment version per STANDARD.evolution_rules.version_management: modify_only→patch+1. Validate JSON.",
+                    "step3": "DESCRIPTION HYGIENE: if description contains >2 version history entries, compress: keep current version changes in full, collapse older entries into 'Prior versions added: [feature list].'",
+                    "step4": "CUSTOM FIELD SEMANTIC CHECK: scan for verified_on, author, tags. Preserve all. For verified_on: if content changed beyond cosmetic fixes, append '(not re-verified after vX.Y.Z modification)' to description as advisory. Do NOT modify verified_on array.",
+                    "step5": "Save atomic (.tmp then rename). Backup as .bak.",
+                    "step6": "Output: { modified_file_path, changes_applied, version, net_token_impact }.",
+                    "step7": "RECONCILIATION OUTPUT (CR7): After all fixes are applied, produce modifystep_reconciliation = { fixes_applied: [{ finding_id: string, original_severity: string, fix_description: string, affected_file: string, affected_step: string }], total_fixes: number }. This output is consumed by main.aisop.json ModifyStep for RESEARCH2 RECONCILIATION — it marks corresponding Research2 findings as 'fixed_in_modifystep' so that Generate2 ThreeDimTest can perform targeted verification rather than independent re-discovery.",
+                    "constraints": "WRITE SAFETY: .bak backup. ATOMIC: .tmp then rename. Partial failure -> rollback from .bak.",
+                    "Error": "Write fails -> retry -> circuit-breaker -> fallback: display patched JSON as code block -> inform."
+                }
+            }
+        }
+    }
+]
