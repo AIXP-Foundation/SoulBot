@@ -24,7 +24,8 @@ from soulbot.agents import LlmAgent
 _AGENT_DIR = Path(__file__).parent
 _AISOP_AIAP_DIR = (_AGENT_DIR / "aisop_aiap").resolve()
 _AISIP_AIAP_DIR = (_AGENT_DIR / "aisip_aiap").resolve()
-_AIAP_STORE_DIR = (_AGENT_DIR.parent / "aiap_store").resolve()
+_AISOP_AIAP_STORE_DIR = (_AGENT_DIR.parent / "aisop_aiap_store").resolve()
+_AISIP_AIAP_STORE_DIR = (_AGENT_DIR.parent / "aisip_aiap_store").resolve()
 
 # User-specified main file (set to None for auto-detect)
 _MAIN_FILE = "main.aisop.json"
@@ -250,7 +251,8 @@ def _dynamic_instruction(_ctx) -> str:
     parts.append(
         f"[AISOP AIAP Directory]\n{_AISOP_AIAP_DIR}\n"
         f"[AISIP AIAP Directory]\n{_AISIP_AIAP_DIR}\n"
-        f"[AIAP Store Directory]\n{_AIAP_STORE_DIR}"
+        f"[AISOP AIAP Store Directory]\n{_AISOP_AIAP_STORE_DIR}\n"
+        f"[AISIP AIAP Store Directory]\n{_AISIP_AIAP_STORE_DIR}"
     )
 
     # 4. AIAP package registry
@@ -284,11 +286,9 @@ def _dynamic_instruction(_ctx) -> str:
 def _resolve_model() -> str:
     """Pick the active model from .env provider flags."""
     if os.getenv("OPENCODE_CLI", "").lower() in ("true", "1"):
-        return os.getenv("OPENCODE_MODEL", "opencode-acp/opencode/kimi-k2.5-free")
+        return os.getenv("OPENCODE_MODEL", "opencode-acp/opencode/gemini-3-flash-preview")
     if os.getenv("GEMINI_CLI", "").lower() in ("true", "1"):
-        return os.getenv("GEMINI_MODEL", "gemini-acp/gemini-2.5-flash")
-    if os.getenv("OPENCLAW_CLI", "").lower() in ("true", "1"):
-        return os.getenv("OPENCLAW_MODEL", "openclaw/default")
+        return os.getenv("GEMINI_MODEL", "gemini-acp/gemini-3-flash-preview")
     return os.getenv("CLAUDE_MODEL", "claude-acp/sonnet")
 
 
