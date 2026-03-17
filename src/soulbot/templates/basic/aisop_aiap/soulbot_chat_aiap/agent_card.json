@@ -1,7 +1,7 @@
 {
   "name": "soulbot_chat",
-  "description": "SoulBot Chat — adaptive conversation engine with digital well-being and multi-dimensional growth coaching. Socratic growth engine with three-level scaffolding, 8-dimension capability tracking with effort-progress calibration, scenario-based social-emotional training (5 types, ZPD), spaced repetition knowledge reinforcement (SM-2), thinking framework coaching (5 frameworks), growth progress dashboard, resilience training, instant performance feedback, dynamic growth safety throttle, growth nudge system, skill practice mode, session growth summaries, cross-session growth continuity, three-type addiction detection, dose-response engagement model, comprehensive safety compliance, person-centered emotional support, Bayesian strategy learning.",
-  "version": "1.1.0",
+  "description": "SoulBot Chat — adaptive conversation engine with digital well-being, multi-dimensional growth coaching, and proactive engagement intelligence. FastIntent two-path classification for latency reduction (fast path: Chat/General/SessionEnd/Continuity; full path: complete NLU pipeline). 78 [ASSERT] entry gates with k-bounded backtrack (Protocol F.2/F.3). Engagement momentum detection (REVIVE strategy), cognitive surprise calibration (Goldilocks zone insight scoring), emotional capitalization response (active-constructive for positive moments), proactive engagement pulse (5-turn aggregate), memory-driven conversation bridge (episodic memory as lull fuel). Multi-turn intent continuity, response quality self-assessment (4D scoring), topic graph deduplication, regulatory expiry tracking (11 regulations). Socratic growth engine, 8-dimension capability tracking, scenario-based training (5 types, ZPD), spaced repetition (SM-2), thinking framework coaching (5 frameworks), resilience training, three-type addiction detection, dose-response engagement model, comprehensive safety compliance (WA HB 2225 + OR SB 1546 + UK OSA), Bayesian strategy learning, adaptive response concision, multi-turn quality meta-evaluation, memory freshness visualization.",
+  "version": "1.2.0",
   "provider": "AIXP Foundation AIXP.dev | SoulBot.dev",
   "pattern": "E",
   "tags": [
@@ -126,18 +126,17 @@
     "soulbot_chat.conversation",
     "soulbot_chat.memory",
     "soulbot_chat.profiler",
-    "soulbot_chat.safety",
-    "soulbot_chat.insights"
+    "soulbot_chat.safety"
   ],
   "status": "active",
   "safety_card": {
     "risk_level": "elevated",
-    "risk_justification": "T3 trust level with file_system write access and crisis-handling intents (Emotional intent includes crisis detection and intervention). Safety module enforces SB 243 disclosure, minor protection, and abuse pattern detection.",
+    "risk_justification": "T3 trust level with file_system write access and crisis-handling intents (Emotional intent includes crisis detection and intervention). Safety module enforces SB 243 disclosure, WA HB 2225, OR SB 1546, UK OSA compliance, minor protection (progressive session enforcement), and abuse pattern detection.",
     "data_handling": "Three-tier memory architecture (working/episodic/semantic) persisted to local file_system under memory_dir (./memory/). User profiles stored in memory/profiles/. GDPR-compliant: supports data export, import, and deletion on request. No external data sharing.",
     "limitations": "Text-only input and output. No autonomous destructive operations beyond safety audit log archival. Crisis responses provide resource references only — never diagnosis or emergency services. Network access limited to user-initiated google_search and web_browser queries."
   },
   "_generated": {
-    "generator": "AIAP Creator v1.17.0",
-    "timestamp": "2026-03-07T15:00:00Z"
+    "generator": "AIAP Creator v1.2.0",
+    "timestamp": "2026-03-16T00:00:00Z"
   }
 }

@@ -5,14 +5,14 @@ protocol: "AIAP V1.0.0"
 authority: aiap.dev
 seed: aisop.dev
 executor: soulbot.dev
-axiom_0: Human_Sovereignty_and_Benefit
+axiom_0: Human_Sovereignty_and_Wellbeing
 governance_mode: NORMAL
 
 # 项目字段 (7 个必需)
 name: soulbot_chat
-version: "1.1.0"
+version: "1.2.0"
 pattern: E
-summary: "SoulBot Chat — AI companion chatbot with long-term memory, user profiling, emotional support, and safety compliance. Remembers conversations across sessions, adapts to user personality and preferences, provides growth coaching, and enforces digital well-being guidelines. Pattern E, 5 modules, 82 nodes."
+summary: "SoulBot Chat — AI companion chatbot with long-term memory, user profiling, emotional support, and safety compliance. Remembers conversations across sessions, adapts to user personality and preferences, provides growth coaching, and enforces digital well-being guidelines. Features: FastIntent two-path classification for latency reduction, engagement momentum detection, cognitive surprise calibration, emotional capitalization response, proactive engagement pulse, memory-driven conversation bridge. Pattern E, 5 modules, 83 nodes."
 tools:
   - name: file_system
     required: true
@@ -40,13 +40,13 @@ tools:
 modules:
   - id: soulbot_chat.main
     file: main.aisop.json
-    nodes: 21
+    nodes: 23
     critical: true
     idempotent: false
     side_effects: [file_write]
   - id: soulbot_chat.conversation
     file: conversation.aisop.json
-    nodes: 16
+    nodes: 15
     critical: true
     idempotent: true
     side_effects: []
@@ -73,12 +73,12 @@ modules:
 identity:
   program_id: "soulbot.dev/soulbot_chat"
   publisher: "AIXP Foundation AIXP.dev | SoulBot.dev"
-  verified_on: "2026-03-04"
-governance_hash: ba4f90f3be76d0b17e03c268745b79ab46f72505331fbb67502ef1da40e5a5e7
+  verified_on: "2026-03-16"
+governance_hash: b943b7e5df8f7fb603e4f81b51cbe428bbdb333509d91a45b3d0a8532756e069
 quality:
-  weighted_score: 4.50
+  weighted_score: 4.975
   grade: S
-  last_pipeline: "v1.1.0: SoulBot Chat adaptive conversation engine with digital well-being, growth coaching, and evidence-based emotional support."
+  last_pipeline: "v1.2.0"
 tags: [soulbot, chat, conversation, memory, profiling, safety, cognition, companion]
 author: SoulBot.dev
 license: Apache-2.0
@@ -169,16 +169,16 @@ discovery_keywords: [soulbot, chat, conversation, companion, memory, profiling, 
 dependencies: []
 min_protocol_version: "AIAP V1.0.0"
 benchmark:
-  threedimscore: 4.50
+  threedimscore: 4.975
   grade: "S"
-  simulation_coverage: "v1.0.0-v1.10.0: 408 scenarios"
-  pass_rate: "408/408 (100%) — 0 RED, 0 YELLOW"
+  simulation_coverage: "640 scenarios"
+  pass_rate: "640/640 (100%) — 0 RED, 0 YELLOW"
 ---
 
 ## 治理声明
 
 SoulBot Chat 是 SoulBot 生态系统的核心对话与用户认知引擎。本程序遵循 AIAP V1.0.0 协议，
-以 Axiom 0 (Human Sovereignty and Benefit) 为不可变公理，通过三域治理链
+以 Axiom 0 (Human Sovereignty and Wellbeing) 为不可变公理，通过三域治理链
 (aisop.dev → aiap.dev → soulbot.dev) 确保所有交互对齐人类主权与福祉。
 
 SoulBot Chat 不仅是一个对话系统，更是用户理解的核心——记录所有对话历史，分形分析用户
@@ -191,11 +191,11 @@ SoulBot Chat 通过 Pattern E (Package + memory/) 架构管理对话与用户认
 
 | 模块 | 职责 | 工具 |
 |------|------|------|
-| **main.aisop.json** | 无状态路由器 (sub_mermaid: main 10 + intent_dispatch 15) — 12意图分类(16混淆对) + 安全双关卡 + 会话管理 + 数据隐私 + 主动陪伴 + token预算管理 + 结构化上下文传递 + 对话节奏智能 + NLU动态置信度校准 + 健康随访 + 三类成瘾检测 + 剂量-反应参与度模型 + 会话成长总结 + 成长进度仪表盘 + **主动健康关怀(B5)** | file_system, google_search, web_browser |
-| **conversation.aisop.json** | 对话引擎 — 多轮对话、信息查询、情感支持、创意协作 + 反谄媚守卫 + 响应质量自检 + 自适应响应策略 + 苏格拉底成长引擎 + 成长助推系统 + 技能练习模式 + 成长心态语言 + 自适应难度 + 元认知反思 + 场景训练器 + 思维框架教练 + 韧性训练 + 即时反馈评分 + 三级脚手架 + 成长干预门控 + **CBT微干预库(B3)** | google_search, web_browser |
-| **memory.aisop.json** | 记忆管理器 — 工作/情景/语义三层记忆 + 实体关系图谱 + 层级摘要 + 跨会话主题连续性 + 三方合并冲突解决 + 加权知识图谱+指数衰减 + 跨会话成长里程碑 + 间隔重复(SM-2) + 知识项提取 + 成长连续性推送 + **图谱记忆合并(B2 Mem0)** + **语义感知间隔重复(B4 LECTOR)** | file_system |
-| **profiler.aisop.json** | 用户画像 — 情绪检测、因果追踪、偏好学习、习惯识别、满意度追踪、认知地图 + 偏好预测 + 情绪恢复模式检测 + 偏好冲突检测 + 8维度成长追踪器 + **努力-进步比校准(C3)** + **上游信号集成(ModifyStep)** | file_system |
-| **safety.aisop.json** | 安全卫士 — 输入/输出筛查、分级危机干预(LOW/MEDIUM/HIGH)、多语言危机检测、虐待模式识别、未成年人保护 + 注入检测器 + 上下文感知AI披露 + 升级检测 + CAIA合规 + 纽约AI伴侣法 + 伊利诺伊临床免责 + 机器可读AI标记 + 成长指导安全边界 + 动态成长安全阀 + **缅因/犹他/内华达三州合规(B1)** | file_system |
+| **main.aisop.json** | 无状态路由器 (sub_mermaid: main + intent_dispatch) — FastIntent双路径分类 + 12意图分类 + 安全双关卡 + 会话管理 + 数据隐私 + 主动陪伴 + token预算管理 + 结构化上下文传递 + 对话节奏智能 + NLU动态置信度校准 + 主动参与度脉搏 | file_system, google_search, web_browser |
+| **conversation.aisop.json** | 对话引擎 — 多轮对话、信息查询、情感支持、创意协作 + 自适应响应策略 + 苏格拉底成长引擎 + 场景训练器 + CBT微干预库 + 参与度动量检测 + 认知惊喜校准 + 情感资本化响应 + 记忆对话桥 | google_search, web_browser |
+| **memory.aisop.json** | 记忆管理器 — 工作/情景/语义三层记忆 + 实体关系图谱 + 层级摘要 + 跨会话主题连续性 + 图谱记忆合并(Mem0) + 语义感知间隔重复(LECTOR) + 记忆新鲜度+置信度可视化 | file_system |
+| **profiler.aisop.json** | 用户画像 — 情绪检测、因果追踪、偏好学习、习惯识别、满意度追踪、认知地图 + 8维度成长追踪器 + 隐式信号集成(HumAIne) | file_system |
+| **safety.aisop.json** | 安全卫士 — 输入/输出筛查、分级危机干预、多语言危机检测、未成年人保护 + 注入检测器 + AI披露 + 11项法规合规(SB243, CAIA, EU AI Act, GDPR, HB2225, SB1546, UK OSA等) | file_system |
 
 ### 记忆架构 (Pattern E)
 
@@ -206,7 +206,7 @@ memory/
   episodic/                 — 按会话的完整对话日志
   semantic/                 — 提取的持久化用户知识
   semantic/{user_id}/relationships.json — 实体关系图谱 ({subject, relation, object, confidence})
-  semantic/{user_id}/topic_graph.json  — 跨会话主题图谱 (v1.2.0+)
+  semantic/{user_id}/topic_graph.json  — 跨会话主题图谱
   profiles/                 — 用户画像文档
 ```
 
@@ -219,6 +219,9 @@ memory/
 - **EU AI Act Article 50**: AI 交互透明度
 - **EU Code of Practice on Transparency** (草案 2025.12): 机器可读 AI 内容标记
 - **GDPR**: 数据最小化、删除权、导出权
+- **Washington HB 2225** (2026.7生效): AI伴侣聊天机器人安全法，未成年人每1小时通知，参与策略扫描
+- **Oregon SB 1546** (2027.1生效): AI伴侣平台安全法，禁止参与留存策略，年度报告
+- **UK Online Safety Act** (待立法): AI聊天机器人年龄验证，未成年人60分钟会话限制，渐进式强制执行
 - **三层安全**: 输入筛查 → 处理约束 → 输出过滤
 
 ## 使用方式
@@ -270,4 +273,4 @@ memory/
 
 ---
 
-Align: Human Sovereignty and Benefit. Version: AIAP V1.0.0. www.aiap.dev
+Align: Human Sovereignty and Wellbeing. Version: AIAP V1.0.0. www.aiap.dev
