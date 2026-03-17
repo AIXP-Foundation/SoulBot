@@ -18,9 +18,12 @@ CREATE TABLE IF NOT EXISTS chat_history (
     session_id TEXT NOT NULL,
     role TEXT NOT NULL,
     content TEXT NOT NULL,
+    l2_json TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL
 );
 """
+
+_MIGRATE_L2 = "ALTER TABLE chat_history ADD COLUMN l2_json TEXT NOT NULL DEFAULT ''"
 
 _CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_chat_agent ON chat_history(user_id, agent, created_at DESC);",
@@ -49,6 +52,11 @@ class SqliteChatHistoryService(BaseChatHistoryService):
             await db.execute(_CREATE_TABLE)
             for idx_sql in _CREATE_INDEXES:
                 await db.execute(idx_sql)
+            # Migrate: add l2_json column if missing
+            try:
+                await db.execute(_MIGRATE_L2)
+            except Exception:
+                pass  # column already exists
             await db.commit()
         self._initialized = True
 
@@ -59,6 +67,7 @@ class SqliteChatHistoryService(BaseChatHistoryService):
         session_id: str,
         role: str,
         content: str,
+        l2_json: str = "",
     ) -> None:
         await self._ensure_db()
         import aiosqlite
@@ -66,9 +75,9 @@ class SqliteChatHistoryService(BaseChatHistoryService):
         now = int(time.time())
         async with aiosqlite.connect(self._db_path) as db:
             await db.execute(
-                "INSERT INTO chat_history (user_id, agent, session_id, role, content, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (user_id, agent, session_id, role, content, now),
+                "INSERT INTO chat_history (user_id, agent, session_id, role, content, l2_json, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (user_id, agent, session_id, role, content, l2_json, now),
             )
             await db.commit()
 
@@ -196,5 +205,6 @@ def _row_to_message(row) -> ChatMessage:
         session_id=row["session_id"],
         role=row["role"],
         content=row["content"],
+        l2_json=row["l2_json"] if "l2_json" in row.keys() else "",
         created_at=row["created_at"],
     )

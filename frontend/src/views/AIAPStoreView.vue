@@ -3,6 +3,11 @@ import { onMounted, ref, computed } from 'vue'
 import { api, apiPost } from '@/composables/useApi'
 import type { StoreProgram } from '@/types'
 
+const activeTab = ref<'aisop' | 'aisip'>('aisop')
+const repos = ref<string[]>([])
+const selectedRepo = ref('')
+const newRepoInput = ref('')
+const addingRepo = ref(false)
 const programs = ref<StoreProgram[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -31,11 +36,69 @@ function displayName(name: string) {
   return name.replace(/_aiap$/, '').replace(/_/g, ' ')
 }
 
+function repoDisplayName(repo: string) {
+  return repo.split('/').pop() || repo
+}
+
+function switchTab(tab: 'aisop' | 'aisip') {
+  activeTab.value = tab
+  searchQuery.value = ''
+  showDropdown.value = null
+  loadPrograms()
+}
+
+async function loadRepos() {
+  try {
+    repos.value = await api<string[]>('/aiap-store/repos')
+    if (repos.value.length > 0 && !selectedRepo.value) {
+      selectedRepo.value = repos.value[0]!
+    }
+  } catch {
+    repos.value = []
+  }
+}
+
+function selectRepo(repo: string) {
+  selectedRepo.value = repo
+  searchQuery.value = ''
+  loadPrograms()
+}
+
+async function addRepo() {
+  const repo = newRepoInput.value.trim()
+  if (!repo) return
+  addingRepo.value = true
+  try {
+    await apiPost('/aiap-store/repos/add', { repo })
+    newRepoInput.value = ''
+    await loadRepos()
+    selectRepo(repo)
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'Failed to add repository')
+  } finally {
+    addingRepo.value = false
+  }
+}
+
+async function removeRepo(repo: string) {
+  if (!confirm(`Remove '${repo}' from the list?`)) return
+  try {
+    await apiPost('/aiap-store/repos/remove', { repo })
+    await loadRepos()
+    if (selectedRepo.value === repo && repos.value.length > 0) {
+      selectRepo(repos.value[0]!)
+    }
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'Failed to remove repository')
+  }
+}
+
 async function loadPrograms() {
   loading.value = true
   error.value = ''
   try {
-    programs.value = await api<StoreProgram[]>('/aiap-store/programs')
+    const repo = selectedRepo.value || ''
+    programs.value = await api<StoreProgram[]>(`/aiap-store/programs?repo=${encodeURIComponent(repo)}&store_type=${activeTab.value}`)
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load'
   } finally {
@@ -54,7 +117,7 @@ async function loadAgents() {
 async function downloadProgram(program: string) {
   downloadingMap.value[program] = true
   try {
-    await apiPost('/aiap-store/download', { program })
+    await apiPost('/aiap-store/download', { program, repo: selectedRepo.value, store_type: activeTab.value })
     downloadedMap.value[program] = true
     setTimeout(() => {
       downloadedMap.value[program] = false
@@ -74,7 +137,7 @@ async function installProgram(program: string, agentName: string) {
   showDropdown.value = null
   installingMap.value[program] = true
   try {
-    await apiPost('/aiap-store/install', { program, agent_name: agentName })
+    await apiPost('/aiap-store/install', { program, agent_name: agentName, repo: selectedRepo.value, store_type: activeTab.value })
     installedMap.value[program] = true
     setTimeout(() => {
       installedMap.value[program] = false
@@ -86,154 +149,348 @@ async function installProgram(program: string, agentName: string) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadRepos()
   loadPrograms()
   loadAgents()
 })
 </script>
 
 <template>
-  <div class="store-page" @click="showDropdown = null">
-    <div class="page-header">
-      <div class="header-left">
-        <h2>AIAP Store</h2>
-        <span class="badge">{{ filteredPrograms.length }}</span>
+  <div class="store-layout" @click="showDropdown = null">
+    <!-- Left sidebar: Repositories -->
+    <aside class="repo-sidebar">
+      <div class="sidebar-header">Repositories</div>
+      <div class="repo-list">
+        <div
+          v-for="repo in repos"
+          :key="repo"
+          class="repo-item"
+          :class="{ active: selectedRepo === repo }"
+          @click="selectRepo(repo)"
+        >
+          <div class="repo-info">
+            <span class="repo-name">{{ repoDisplayName(repo) }}</span>
+            <span class="repo-full">{{ repo }}</span>
+          </div>
+          <button
+            v-if="repo !== repos[0]"
+            class="btn-remove-repo"
+            title="Remove"
+            @click.stop="removeRepo(repo)"
+          >&times;</button>
+        </div>
       </div>
-      <div class="search-box">
+      <div class="add-repo">
         <input
-          v-model="searchQuery"
+          v-model="newRepoInput"
           type="text"
-          placeholder="Search programs..."
-          class="search-input"
+          placeholder="owner/repo"
+          class="add-repo-input"
+          @keyup.enter="addRepo"
         />
+        <button
+          class="btn-add-repo"
+          :disabled="addingRepo || !newRepoInput.trim()"
+          @click="addRepo"
+        >+</button>
       </div>
-    </div>
+    </aside>
 
-    <p class="page-subtitle">Browse and install AIAP programs from the community</p>
+    <!-- Right content: Programs -->
+    <div class="store-page">
+      <div class="page-header">
+        <div class="header-left">
+          <h2>AIAP Store</h2>
+          <span class="badge">{{ filteredPrograms.length }}</span>
+        </div>
+        <div class="search-box">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search programs..."
+            class="search-input"
+          />
+        </div>
+      </div>
 
-    <div v-if="loading" class="loading">Loading programs from AIAP Store...</div>
+      <p class="page-subtitle">Browse and install AIAP programs from the community</p>
 
-    <div v-else-if="error" class="error-state">
-      <p>{{ error }}</p>
-      <button class="btn-retry" @click="loadPrograms">Retry</button>
-    </div>
+      <!-- Tabs -->
+      <div class="tabs">
+        <button
+          class="tab"
+          :class="{ active: activeTab === 'aisop' }"
+          @click="switchTab('aisop')"
+        >AISOP AIGP</button>
+        <button
+          class="tab"
+          :class="{ active: activeTab === 'aisip' }"
+          @click="switchTab('aisip')"
+        >AISIP AIGP</button>
+      </div>
 
-    <div v-else-if="programs.length === 0" class="empty-state">
-      <p>No programs available in the AIAP Store yet.</p>
-    </div>
+      <div v-if="loading" class="loading">Loading programs from AIAP Store...</div>
 
-    <div v-else-if="filteredPrograms.length === 0" class="empty-state">
-      <p>No programs match "{{ searchQuery }}"</p>
-    </div>
+      <div v-else-if="error" class="error-state">
+        <p>{{ error }}</p>
+        <button class="btn-retry" @click="loadPrograms">Retry</button>
+      </div>
 
-    <div v-else class="table-wrapper">
-      <table class="store-table">
-        <thead>
-          <tr>
-            <th class="col-name">Name</th>
-            <th class="col-pattern">Pattern</th>
-            <th class="col-version">Version</th>
-            <th class="col-trust">Trust</th>
-            <th class="col-quality">Quality</th>
-            <th class="col-modules">Modules</th>
-            <th class="col-summary">Summary</th>
-            <th class="col-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="prog in filteredPrograms" :key="prog.name">
-            <td class="col-name">
-              <a
-                :href="prog.github_url"
-                target="_blank"
-                rel="noopener"
-                class="program-link"
-              >{{ displayName(prog.name) }}</a>
-            </td>
-            <td class="col-pattern">
-              <span v-if="prog.pattern" class="tag pattern-tag">{{ prog.pattern }}</span>
-              <span v-else class="text-muted">-</span>
-            </td>
-            <td class="col-version">
-              <span v-if="prog.version">{{ prog.version }}</span>
-              <span v-else class="text-muted">-</span>
-            </td>
-            <td class="col-trust">
-              <span v-if="prog.trust_level" class="tag trust-tag">{{ prog.trust_level }}</span>
-              <span v-else class="text-muted">-</span>
-            </td>
-            <td class="col-quality">
-              <span v-if="prog.quality_grade" class="tag" :class="'grade-' + prog.quality_grade">
-                {{ prog.quality_grade }}
-                <template v-if="prog.quality_score">({{ prog.quality_score.toFixed(1) }})</template>
-              </span>
-              <span v-else class="text-muted">-</span>
-            </td>
-            <td class="col-modules">
-              {{ prog.module_count || '-' }}
-            </td>
-            <td class="col-summary">
-              <span class="summary-text">{{ prog.summary || '-' }}</span>
-            </td>
-            <td class="col-actions" @click.stop>
-              <div class="action-cell">
-                <!-- Download -->
-                <button
-                  v-if="downloadingMap[prog.name]"
-                  class="btn-sm btn-download" disabled
-                >Downloading...</button>
-                <button
-                  v-else-if="downloadedMap[prog.name]"
-                  class="btn-sm btn-downloaded" disabled
-                >Downloaded</button>
-                <button
-                  v-else
-                  class="btn-sm btn-download"
-                  @click="downloadProgram(prog.name)"
-                >Download</button>
+      <div v-else-if="programs.length === 0" class="empty-state">
+        <p>No programs available in this repository yet.</p>
+      </div>
 
-                <!-- Install -->
-                <div class="install-wrapper">
+      <div v-else-if="filteredPrograms.length === 0" class="empty-state">
+        <p>No programs match "{{ searchQuery }}"</p>
+      </div>
+
+      <div v-else class="table-wrapper">
+        <table class="store-table">
+          <thead>
+            <tr>
+              <th class="col-name">Name</th>
+              <th class="col-pattern">Pattern</th>
+              <th class="col-version">Version</th>
+              <th class="col-trust">Trust</th>
+              <th class="col-quality">Quality</th>
+              <th class="col-modules">Modules</th>
+              <th class="col-summary">Summary</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="prog in filteredPrograms" :key="prog.name">
+              <td class="col-name">
+                <a
+                  :href="prog.github_url"
+                  target="_blank"
+                  rel="noopener"
+                  class="program-link"
+                >{{ displayName(prog.name) }}</a>
+              </td>
+              <td class="col-pattern">
+                <span v-if="prog.pattern" class="tag pattern-tag">{{ prog.pattern }}</span>
+                <span v-else class="text-muted">-</span>
+              </td>
+              <td class="col-version">
+                <span v-if="prog.version">{{ prog.version }}</span>
+                <span v-else class="text-muted">-</span>
+              </td>
+              <td class="col-trust">
+                <span v-if="prog.trust_level" class="tag trust-tag">{{ prog.trust_level }}</span>
+                <span v-else class="text-muted">-</span>
+              </td>
+              <td class="col-quality">
+                <span v-if="prog.quality_grade" class="tag" :class="'grade-' + prog.quality_grade">
+                  {{ prog.quality_grade }}
+                  <template v-if="prog.quality_score">({{ prog.quality_score.toFixed(1) }})</template>
+                </span>
+                <span v-else class="text-muted">-</span>
+              </td>
+              <td class="col-modules">
+                {{ prog.module_count || '-' }}
+              </td>
+              <td class="col-summary">
+                <span class="summary-text">{{ prog.summary || '-' }}</span>
+              </td>
+              <td class="col-actions" @click.stop>
+                <div class="action-cell">
+                  <!-- Download -->
                   <button
-                    v-if="installingMap[prog.name]"
-                    class="btn-sm btn-install" disabled
-                  >Installing...</button>
+                    v-if="downloadingMap[prog.name]"
+                    class="btn-sm btn-download" disabled
+                  >Downloading...</button>
                   <button
-                    v-else-if="installedMap[prog.name]"
-                    class="btn-sm btn-installed" disabled
-                  >Installed</button>
+                    v-else-if="downloadedMap[prog.name]"
+                    class="btn-sm btn-downloaded" disabled
+                  >Downloaded</button>
                   <button
                     v-else
-                    class="btn-sm btn-install"
-                    @click="toggleDropdown(prog.name)"
-                  >Install</button>
+                    class="btn-sm btn-download"
+                    @click="downloadProgram(prog.name)"
+                  >Download</button>
 
-                  <div
-                    v-if="showDropdown === prog.name"
-                    class="agent-dropdown"
-                  >
-                    <div class="dropdown-title">Select Agent:</div>
+                  <!-- Install -->
+                  <div class="install-wrapper">
+                    <button
+                      v-if="installingMap[prog.name]"
+                      class="btn-sm btn-install" disabled
+                    >Installing...</button>
+                    <button
+                      v-else-if="installedMap[prog.name]"
+                      class="btn-sm btn-installed" disabled
+                    >Installed</button>
+                    <button
+                      v-else
+                      class="btn-sm btn-install"
+                      @click="toggleDropdown(prog.name)"
+                    >Install</button>
+
                     <div
-                      v-for="agent in agents"
-                      :key="agent"
-                      class="dropdown-item"
-                      @click="installProgram(prog.name, agent)"
-                    >{{ agent }}</div>
-                    <div v-if="agents.length === 0" class="dropdown-empty">
-                      No agents available
+                      v-if="showDropdown === prog.name"
+                      class="agent-dropdown"
+                    >
+                      <div class="dropdown-title">Select Agent:</div>
+                      <div
+                        v-for="agent in agents"
+                        :key="agent"
+                        class="dropdown-item"
+                        @click="installProgram(prog.name, agent)"
+                      >{{ agent }}</div>
+                      <div v-if="agents.length === 0" class="dropdown-empty">
+                        No agents available
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.store-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ---- Sidebar ---- */
+.repo-sidebar {
+  width: 220px;
+  min-width: 220px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+}
+
+.sidebar-header {
+  padding: 16px 14px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.repo-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 6px;
+}
+
+.repo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.1s;
+  margin-bottom: 2px;
+}
+.repo-item:hover {
+  background: var(--accent-bg);
+}
+.repo-item.active {
+  background: var(--accent-bg);
+  border-left: 2px solid var(--accent);
+}
+
+.repo-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.repo-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repo-full {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-remove-repo {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.repo-item:hover .btn-remove-repo {
+  opacity: 0.6;
+}
+.btn-remove-repo:hover {
+  opacity: 1 !important;
+  color: var(--error);
+}
+
+.add-repo {
+  display: flex;
+  gap: 4px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.add-repo-input {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: var(--font);
+  outline: none;
+  min-width: 0;
+}
+.add-repo-input:focus {
+  border-color: var(--accent);
+}
+.add-repo-input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-add-repo {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  width: 28px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.btn-add-repo:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn-add-repo:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---- Main content ---- */
 .store-page {
   flex: 1;
   padding: 24px;
@@ -262,6 +519,37 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-muted);
   margin-bottom: 20px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 .search-input {

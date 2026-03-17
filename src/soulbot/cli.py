@@ -89,8 +89,16 @@ def run(agent_path: str):
     history_service = _build_history_service(str(agents_dir))
     _setup_provider_session_store()
     _inject_history_tool(agent, history_service)
+
+    # Wire up schedule + SOULBOT_CMD pipeline
+    bus, cmd_executor, cron, _sched_svc, hb_store = _build_schedule_pipeline(
+        agents={agent.name: agent}, session_service=svc,
+        agents_dir=str(agents_dir), cli_name=cli_name,
+    )
+
     runner = Runner(
         agent=agent, app_name=cli_name, session_service=svc,
+        bus=bus, cmd_executor=cmd_executor,
         history_service=history_service,
     )
 
@@ -151,13 +159,28 @@ def run(agent_path: str):
                 continue
 
             try:
+                _streaming = False
                 async for event in runner.run(
                     user_id=user_id,
                     session_id=session_id,
                     message=user_input,
                 ):
                     if event.partial:
+                        # Streaming: print chunks without newline
+                        if event.content and event.content.parts:
+                            for part in event.content.parts:
+                                if part.text:
+                                    if not _streaming:
+                                        sys.stdout.write(f"[{event.author}]: ")
+                                        _streaming = True
+                                    sys.stdout.write(part.text)
+                                    sys.stdout.flush()
                         continue
+                    if _streaming:
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        _streaming = False
+                        continue  # skip final event — text already streamed
                     if event.content and event.content.parts:
                         for part in event.content.parts:
                             if part.text:
@@ -269,9 +292,24 @@ def web(agents_dir: str, host: str, port: int, telegram: bool | None):
     web_history = _build_history_service(agents_dir)
     _setup_provider_session_store()
 
-    # Schedule service — set by Telegram pipeline when available
-    sched_svc = None
-    active_hb_store = None
+    # Wire up schedule + SOULBOT_CMD pipeline for web API
+    from .server.agent_loader import AgentLoader as _WebLoader
+    _web_loader = _WebLoader(agents_dir)
+    _web_agents = {}
+    for _name in _web_loader.list_agents():
+        try:
+            _web_agents[_name] = _web_loader.load_agent(_name)
+        except (AttributeError, TypeError, FileNotFoundError):
+            pass
+    if _web_agents:
+        _inject_all = _build_history_service(agents_dir)
+        for _a in _web_agents.values():
+            _inject_history_tool(_a, _inject_all)
+
+    web_bus, web_cmd_executor, web_cron, sched_svc, active_hb_store = _build_schedule_pipeline(
+        agents=_web_agents, session_service=web_svc,
+        agents_dir=agents_dir, cli_name=cli_name,
+    )
 
     # Auto-start Telegram bot(s)
     # Scan agents, group by TELEGRAM_BOT_TOKEN, start one bridge per token.
@@ -387,6 +425,7 @@ def web(agents_dir: str, host: str, port: int, telegram: bool | None):
         schedule_service=sched_svc,
         heartbeat_store=active_hb_store,
         cli_name=cli_name,
+        bus=web_bus, cmd_executor=web_cmd_executor,
     )
 
     # Auto-build frontend if source changed + start watcher
@@ -686,6 +725,10 @@ def _build_schedule_pipeline(
         heartbeat_store=heartbeat_store,
     )
     cmd_executor.register_service("schedule", schedule_service)
+
+    # On-demand function loading for AISOP/AISIP flows (Doc 02)
+    from .commands.flow_service import FlowService
+    cmd_executor.register_service("flow", FlowService(agent_dir=agents_dir))
 
     # Restore persisted tasks (cron.start deferred to on_startup)
     restored = schedule_service.restore()

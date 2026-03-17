@@ -1,0 +1,97 @@
+{
+  "scoring_scale": "1-5",
+  "version": "1.2.0",
+  "snapshot_date": "2026-03-16",
+  "three_dim_test": {
+    "weighted_score": 4.899,
+    "grade": "S",
+    "cognitive": {
+      "weight": 0.25,
+      "items": "C1-C7",
+      "score": 4.714,
+      "notes": "C1-C4,C6 scored 5. C5=4 (207 nodes, YELLOW Y1 — main 32, advisor 63, convert 18, generate 29 with fractal_exempt). C7=4 (token approximation, YELLOW Y2)."
+    },
+    "intrinsic": {
+      "weight": 0.45,
+      "items": "I1-I13",
+      "score": 5.0,
+      "na_items": [],
+      "applicable_count": 13,
+      "notes": "All 13 items scored 5. 6-point check per item confirms all features exist."
+    },
+    "detail": {
+      "weight": 0.3,
+      "items": "D1-D10",
+      "score": 4.9,
+      "notes": "D1-D8,D10 scored 5. D9=4 (governance_hash not embedded in .aisop.json, YELLOW Y3)."
+    },
+    "multi_file": "MF1-MF38 (37 PASS / 0 FAIL / 1 N/A: MF16). MF29: Version Sync. MF30: Score Consistency. MF31: Mermaid-Function Consistency. MF31c: endNode sub-graph. MF31d: fractal_exempt. MF32: Module Existence. MF33: Cross-Module Parameter Name Drift. MF34: AIAP_Tools Version Staleness (Pattern G). MF35: flow_format Declaration Consistency. MF36: Name-Version Drift Detection. MF37: Summary Length Compliance. MF38: Agent Card Consistency.",
+    "pipeline": "PL1-PL28 (28 PASS / 0 FAIL)",
+    "multi_agent": "K1-K10 (10 PASS / 0 FAIL)",
+    "simulation_categories": "A-Z, AA (643 scenarios)"
+  },
+  "simulation": {
+    "total_scenarios": 643,
+    "passed": 643,
+    "failed": 0,
+    "pass_rate": "643/643 (100%)",
+    "categories": {
+      "A_core_intent": 16,
+      "B_security": 13,
+      "C_quality_gate": 10,
+      "D_error_path": 10,
+      "E_edge_case": 13,
+      "F_domain_specific": 8,
+      "G_comparative": 10,
+      "H_mutation": 14,
+      "J_trust_boundary": 4,
+      "K_multi_agent": 7,
+      "L_ui_output": 2,
+      "M_tool_directory": 22,
+      "N_sub_mermaid": 5,
+      "O_output_completeness": 6,
+      "P_domain_specific": 10,
+      "Q_license_copyright": 12,
+      "R_change_driven": 376,
+      "S_multi_mechanism": 14,
+      "T_async_delegation_race": 13,
+      "U_sub_mermaid_delegation": 4,
+      "V_create_mode_enhancement": 10,
+      "W_insights_mechanism": 6,
+      "X_insights_lifecycle": 15,
+      "Y_aisip_quality": 11,
+      "Z_dual_mode": 16,
+      "AA_format_conversion": 16
+    },
+    "result_summary": {
+      "GREEN": 618,
+      "YELLOW_accepted": 10,
+      "YELLOW": 0,
+      "RED": 0
+    }
+  },
+  "regression_check": {
+    "QRG1_single_version": {
+      "delta": 0.0,
+      "baseline": 4.899,
+      "current": 4.899,
+      "result": "PASS (delta 0.000, stable)"
+    },
+    "QRG3_absolute_floor": {
+      "score": 4.899,
+      "floor": 3.0,
+      "result": "PASS"
+    },
+    "QRG4_dimension": {
+      "C_delta": 0.0,
+      "I_delta": 0.0,
+      "D_delta": 0.0,
+      "result": "PASS (all dimensions stable)"
+    },
+    "QRG5_security_floor": {
+      "I2_score": 5,
+      "I8_score": 5,
+      "result": "PASS (I2 > 2, I8 = 5)"
+    }
+  }
+}

@@ -9,7 +9,9 @@ const props = defineProps<{ name: string }>()
 const router = useRouter()
 const agentStore = useAgentStore()
 
+const activeTab = ref<'aisop' | 'aisip'>('aisop')
 const aisops = ref<AisopInfo[]>([])
+const aisips = ref<AisopInfo[]>([])
 const libraryAisops = ref<AisopInfo[]>([])
 const loading = ref(true)
 const expandedGroups = ref<Set<string>>(new Set())
@@ -19,34 +21,59 @@ const deleteGroupTarget = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const [agentData, libData] = await Promise.all([
+    const [agentAisops, agentAisips, libData] = await Promise.all([
       agentStore.loadAisops(props.name).catch(() => [] as AisopInfo[]),
+      agentStore.loadAisips(props.name).catch(() => [] as AisopInfo[]),
       agentStore.loadAisopLibrary().catch(() => [] as AisopInfo[]),
     ])
-    aisops.value = agentData
+    aisops.value = agentAisops
+    aisips.value = agentAisips
     libraryAisops.value = libData
   } catch {
     aisops.value = []
+    aisips.value = []
     libraryAisops.value = []
   }
   loading.value = false
 })
 
+// AIAP package count (groups + ungrouped non-main files)
+function aiapCount(items: AisopInfo[], mainFile: string): number {
+  const groupNames = new Set<string>()
+  let ungroupedCount = 0
+  for (const a of items) {
+    if (a.group) {
+      groupNames.add(a.group)
+    } else if (a.path.split('/').pop() !== mainFile) {
+      ungroupedCount++
+    }
+  }
+  return groupNames.size + ungroupedCount
+}
+const aisopCount = computed(() => aiapCount(aisops.value, 'main.aisop.json'))
+const aisipCount = computed(() => aiapCount(aisips.value, 'main.aisip.json'))
+
+// Current tab's data
+const currentItems = computed(() => activeTab.value === 'aisop' ? aisops.value : aisips.value)
+const mainFileName = computed(() => activeTab.value === 'aisop' ? 'main.aisop.json' : 'main.aisip.json')
+const dirName = computed(() => activeTab.value === 'aisop' ? 'aisop_aiap' : 'aisip_aiap')
+const tabLabel = computed(() => activeTab.value.toUpperCase())
+
 // Split into ungrouped (flat) and grouped
-const ungrouped = computed(() => aisops.value.filter(a => !a.group))
+const ungrouped = computed(() => currentItems.value.filter(a => !a.group))
 const groups = computed(() => {
   const map = new Map<string, AisopInfo[]>()
-  for (const a of aisops.value) {
+  for (const a of currentItems.value) {
     if (a.group) {
       if (!map.has(a.group)) map.set(a.group, [])
       map.get(a.group)!.push(a)
     }
   }
-  // Sort each group: main.aisop.json first, rest alphabetical
+  // Sort each group: main file first, rest alphabetical
   for (const [, items] of map) {
     items.sort((a, b) => {
-      const aMain = a.path.endsWith('/main.aisop.json') ? 0 : 1
-      const bMain = b.path.endsWith('/main.aisop.json') ? 0 : 1
+      const aMain = a.path.endsWith('/' + mainFileName.value) ? 0 : 1
+      const bMain = b.path.endsWith('/' + mainFileName.value) ? 0 : 1
       return aMain - bMain || a.path.localeCompare(b.path)
     })
   }
@@ -55,8 +82,8 @@ const groups = computed(() => {
 
 // Library: filter out groups already present in agent, then group
 const libraryGroups = computed(() => {
-  const agentGroupNames = new Set(aisops.value.filter(a => a.group).map(a => a.group!))
-  const agentNames = new Set(aisops.value.map(a => a.name))
+  const agentGroupNames = new Set(currentItems.value.filter(a => a.group).map(a => a.group!))
+  const agentNames = new Set(currentItems.value.map(a => a.name))
   const filtered = libraryAisops.value.filter(a => {
     if (a.group && agentGroupNames.has(a.group)) return false
     if (agentNames.has(a.name)) return false
@@ -70,8 +97,8 @@ const libraryGroups = computed(() => {
   }
   for (const [, items] of map) {
     items.sort((a, b) => {
-      const aMain = a.path.endsWith('/main.aisop.json') ? 0 : 1
-      const bMain = b.path.endsWith('/main.aisop.json') ? 0 : 1
+      const aMain = a.path.endsWith('/' + mainFileName.value) ? 0 : 1
+      const bMain = b.path.endsWith('/' + mainFileName.value) ? 0 : 1
       return aMain - bMain || a.path.localeCompare(b.path)
     })
   }
@@ -87,7 +114,7 @@ function toggleLibGroup(group: string) {
 }
 
 function isMain(item: AisopInfo): boolean {
-  return item.path.split('/').pop() === 'main.aisop.json'
+  return item.path.split('/').pop() === mainFileName.value
 }
 
 function toggleGroup(group: string) {
@@ -96,6 +123,12 @@ function toggleGroup(group: string) {
   } else {
     expandedGroups.value.add(group)
   }
+}
+
+function switchTab(tab: 'aisop' | 'aisip') {
+  activeTab.value = tab
+  expandedGroups.value.clear()
+  expandedLibGroups.value.clear()
 }
 
 async function handleAddFromLibrary(group: string) {
@@ -119,7 +152,11 @@ async function handleDelete() {
   deleteTarget.value = null
   try {
     await agentStore.deleteAisop(props.name, path)
-    aisops.value = aisops.value.filter(a => a.path !== path)
+    if (activeTab.value === 'aisop') {
+      aisops.value = aisops.value.filter(a => a.path !== path)
+    } else {
+      aisips.value = aisips.value.filter(a => a.path !== path)
+    }
   } catch (e: unknown) {
     alert(e instanceof Error ? e.message : String(e))
   }
@@ -130,8 +167,12 @@ async function handleDeleteGroup() {
   const group = deleteGroupTarget.value
   deleteGroupTarget.value = null
   try {
-    await agentStore.deleteAisop(props.name, `aisop/${group}`)
-    aisops.value = aisops.value.filter(a => a.group !== group)
+    await agentStore.deleteAisop(props.name, `${dirName.value}/${group}`)
+    if (activeTab.value === 'aisop') {
+      aisops.value = aisops.value.filter(a => a.group !== group)
+    } else {
+      aisips.value = aisips.value.filter(a => a.group !== group)
+    }
     expandedGroups.value.delete(group)
   } catch (e: unknown) {
     alert(e instanceof Error ? e.message : String(e))
@@ -154,14 +195,35 @@ function goBack() {
     <div v-if="loading" class="loading">Loading...</div>
 
     <template v-else>
+      <!-- Tabs -->
+      <div class="tabs">
+        <button
+          class="tab"
+          :class="{ active: activeTab === 'aisop' }"
+          @click="switchTab('aisop')"
+        >
+          AISOP
+          <span class="tab-count">{{ aisopCount }}</span>
+        </button>
+        <button
+          class="tab"
+          :class="{ active: activeTab === 'aisip' }"
+          @click="switchTab('aisip')"
+        >
+          AISIP
+          <span class="tab-count">{{ aisipCount }}</span>
+        </button>
+      </div>
+
+      <!-- File List -->
       <div class="section">
         <div class="section-header">
-          <h3>AISOP Files</h3>
+          <h3>{{ tabLabel }} Files</h3>
           <span class="badge">{{ ungrouped.filter(a => !isMain(a)).length + groups.length }}</span>
         </div>
 
-        <div v-if="aisops.length === 0" class="empty-state">
-          No AISOP files found in this agent.
+        <div v-if="currentItems.length === 0" class="empty-state">
+          No {{ tabLabel }} files found in this agent.
         </div>
 
         <div v-else class="aisop-list">
@@ -215,8 +277,8 @@ function goBack() {
         </div>
       </div>
 
-      <!-- AISOP Library -->
-      <div v-if="libraryGroups.length > 0" class="section">
+      <!-- Library (only for AISOP tab) -->
+      <div v-if="activeTab === 'aisop' && libraryGroups.length > 0" class="section">
         <div class="section-header">
           <h3>AISOP Library</h3>
           <span class="badge">{{ libraryGroups.filter(([g]) => g !== '_flat').length + libraryGroups.filter(([g]) => g === '_flat').reduce((n, [, items]) => n + items.filter(a => !isMain(a)).length, 0) }}</span>
@@ -270,7 +332,7 @@ function goBack() {
 
     <ConfirmDialog
       v-if="deleteTarget"
-      title="Delete AISOP File"
+      title="Delete File"
       :message="`Delete '${deleteTarget.path.split('/').pop()}'? This cannot be undone.`"
       confirmText="Delete"
       confirmVariant="danger"
@@ -280,8 +342,8 @@ function goBack() {
 
     <ConfirmDialog
       v-if="deleteGroupTarget"
-      title="Delete AISOP Group"
-      :message="`Delete entire folder '${deleteGroupTarget}' and all AISOP files inside? This cannot be undone.`"
+      title="Delete Group"
+      :message="`Delete entire folder '${deleteGroupTarget}' and all files inside? This cannot be undone.`"
       confirmText="Delete Folder"
       confirmVariant="danger"
       @confirm="handleDeleteGroup"
@@ -333,6 +395,47 @@ function goBack() {
 .loading {
   color: var(--text-muted);
   padding: 40px;
+  text-align: center;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-count {
+  font-size: 11px;
+  font-weight: 400;
+  background: var(--accent-bg);
+  padding: 0 6px;
+  border-radius: 8px;
+  min-width: 18px;
   text-align: center;
 }
 

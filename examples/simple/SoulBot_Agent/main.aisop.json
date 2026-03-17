@@ -3,34 +3,42 @@
         "role": "system",
         "content": {
             "protocol": "AISOP V1.0.0",
-            "id": "SoulBot_Agent.main",
-            "name": "SoulBot Agent",
+            "id": "Route.main",
+            "name": "Route",
             "version": "1.0.0",
-            "summary": "Main entry point that routes user intent to the matching *_aiap package.",
-            "description": "Analyzes user intent via NLU and routes to the best matching *_aiap package from [Available AIAP packages]. Each package contains a main.aisop.json that handles the specific domain.",
-            "tools": [
-                "file_system"
-            ],
-            "system_prompt": "STRICT ADHERENCE TO AISOP FLOW IS MANDATORY. You are a pure intent router. Analyze user intent with conversation context. If an AIAP package is active in the current session, follow-up messages stay with that package unless user clearly switches intent. Match to an AIAP package from [Available AIAP packages], read and run its main.aisop.json. If no AIAP packages are available or no package matches, inform the user and suggest adding an AIAP package. Always mirror User's exact language and script variant."
+            "summary": "Route main entry — classify user intent and route to matching AIAP package.",
+            "description": "AISOP V1: flow graph visible + function on-demand loading.",
+            "loading_mode": "normal",
+            "tools": ["file_system"],
+            "system_prompt": "{system_prompt}"
         }
     },
     {
         "role": "user",
         "content": {
-            "instruction": "RUN aisop.main",
+            "instruction": "ASSERT RUN aisop.main",
+            "user_input": "{user_input}",
             "aisop": {
-                "main": "graph TD\n    NLU[Match Intent to AIAP Package] --> Run[Read & Run *_aiap/main.aisop.json]\n    Run --> endNode((End))"
+                "main": "graph TD\n    match{match} -->|matched| execute[execute]\n    match -->|uncertain| classify[classify]\n    execute --> end[end]\n    classify --> execute"
             },
             "functions": {
-                "NLU": {
-                    "step1": "Match user intent to the best *_aiap package from [Available AIAP packages]",
+                "match": {
+                    "step1": "Match user intent to the best AIAP package from [Available AIAP packages]",
                     "context_rule": "If conversation context shows an active AIAP package, ambiguous or follow-up messages (e.g. 'done?', 'next', 'go on') MUST stay routed to the same package. Only switch when user expresses a clearly different intent.",
-                    "no_match": "Inform user that no matching AIAP package exists and suggest adding one"
+                    "no_match": "Inform user that no matching AIAP package exists and suggest adding one",
+                    "uncertain": "If not sure which package to use, route to classify branch"
                 },
-                "Run": {
-                    "step1": "Read [AIAP Directory]/{matched_aiap}/main.aisop.json using file_system tool",
-                    "step2": "Parse and run the loaded AISOP blueprint, return result to user",
+                "classify": {
+                    "step1": "Read and execute intent_classifier_aiap/main.aisop.json using file_system tool",
+                    "step2": "Use classification result to determine the correct AIAP package"
+                },
+                "execute": {
+                    "step1": "Read the matched AIAP package entry file using file_system tool",
+                    "step2": "Parse and run the loaded AISOP/AISIP blueprint, return result to user",
                     "constraints": "Never fabricate responses without running the routed AIAP package."
+                },
+                "end": {
+                    "step1": "Output final response to user"
                 }
             }
         }

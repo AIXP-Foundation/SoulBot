@@ -1,0 +1,115 @@
+[
+    {
+        "role": "system",
+        "content": {
+            "protocol": "AIAP V1.0.0",
+            "id": "aiap_creator.convert",
+            "name": "AIAP Creator Convert Module",
+            "version": "1.2.0",
+            "summary": "Format conversion module for AIAP programs. Bidirectional AISOP-AISIP conversion with auto-direction detection, topology transformation (Mermaid to JSON flow dict), functions byte-identical copy, migration manifest generation, round-trip verification, multi-module batch conversion with _source file retention. ~8K tokens/conversion.",
+            "description": "Converts AIAP programs between AISOP (Mermaid flow) and AISIP (JSON flow dict) formats. 4-step pipeline: SETUP (auto-detect direction, create target dir, copy _source + data files) → CONVERT (per-file §4 topology transformation, §0/§2/§5/§6 byte-identical copy) → ALIGN (governance files protocol alignment, migration manifest) → PROMPT (summary + verification checklist). Conversion is pure topology transformation — functions are 100% identical between formats (E2 correction). ~8K tokens per conversion.",
+            "tools": [
+                "file_system"
+            ],
+            "params": {
+                "source_path": "string, REQUIRED: Path to source AIAP program directory.",
+                "target_store": "string, REQUIRED: Path to target store directory (e.g., aisip_aiap_store/).",
+                "direction": "string|null, default: null, Optional. 'AISOP_TO_AISIP' or 'AISIP_TO_AISOP'. Auto-detected from source files if null."
+            },
+            "loading_mode": "normal",
+            "system_prompt": "AIAP format conversion assistant. Convert programs between AISOP and AISIP formats losslessly. Preserve all functions, constraints, and metadata exactly. Only transform §4 topology.\nAlign: Human Sovereignty and Wellbeing."
+        }
+    },
+    {
+        "role": "user",
+        "content": {
+            "instruction": "RUN aisop.main",
+            "aisop": {
+                "main": "graph TD\n    Start[Receive Conversion Request] --> ParseReq[Parse Source Path + Target Store]\n    ParseReq --> DetectDir{Auto-Detect Direction}\n    DetectDir -->|ambiguous| ErrorAmbiguous[ERROR: AMBIGUOUS_SOURCE]\n    DetectDir -->|no files| ErrorNoSource[ERROR: NO_SOURCE]\n    DetectDir -->|detected| CreateDir[Step1: Create Target Directory]\n    CreateDir --> CopyData[Copy Data Files + Subdirs As-Is]\n    CopyData --> CopySource[Copy Program Files with _source Suffix]\n    CopySource --> Scan[Scan _source File List]\n    Scan --> NextFile{More Files to Convert?}\n    NextFile -->|yes| ReadSource[Read Current _source File]\n    ReadSource --> ConvertFlow[Convert §4 Topology: Mermaid ↔ JSON flow dict]\n    ConvertFlow --> CopyRest[Copy §0/§2/§5/§6: Functions + Metadata Unchanged]\n    CopyRest --> SaveTarget[Save Target Format File]\n    SaveTarget --> NextFile\n    NextFile -->|no, all done| AlignDocs[Step3: Copy + Align Governance Files]\n    AlignDocs --> GenManifest[Generate conversion_manifest.json]\n    GenManifest --> OutputSummary[Step4: Output Summary + Verification Checklist]\n    OutputSummary --> endNode((End))"
+            },
+            "functions": {
+                "Start": {
+                    "step1": "Receive conversion request from main router. Extract source_path, target_store, and optional direction parameter from user request and pipeline context.",
+                    "constraints": "source_path must resolve within workspace_dir. target_store must resolve within workspace_dir.",
+                    "Error": "Missing parameters → prompt user for source_path and target_store. SEVERITY: IMPORTANT — max 2 retries."
+                },
+                "ParseReq": {
+                    "step1": "[ASSERT] Start executed. If false → go back to Start. | Parse and validate inputs: (a) source_path — resolve to absolute path, verify directory exists via file_system. (b) target_store — resolve to absolute path, verify directory exists. (c) direction — if provided, validate is 'AISOP_TO_AISIP' or 'AISIP_TO_AISOP'. (d) Extract program_name = basename(source_path).",
+                    "constraints": "Path guard — reject paths outside workspace_dir. Reject '..' traversal.",
+                    "Error": "Invalid path → 'Source directory not found: {source_path}'. SEVERITY: IMPORTANT."
+                },
+                "DetectDir": {
+                    "step1": "[ASSERT] ParseReq executed. If false → go back to ParseReq. | AUTO-DETECT conversion direction from source files: (a) Scan source_path for *.aisop.json files → aisop_count. (b) Scan source_path for *.aisip.json files → aisip_count. (c) DECISION: IF aisop_count > 0 AND aisip_count == 0 → direction = AISOP_TO_AISIP. IF aisip_count > 0 AND aisop_count == 0 → direction = AISIP_TO_AISOP. IF both > 0 AND direction param provided → use param. IF both > 0 AND no direction param → ERROR: AMBIGUOUS_SOURCE. IF both == 0 → ERROR: NO_SOURCE.",
+                    "step2": "Determine file extension mapping: IF AISOP_TO_AISIP → source_ext='.aisop.json', target_ext='.aisip.json', source_prefix='aisop', target_prefix='aisip'. IF AISIP_TO_AISOP → reverse. LOG: 'Direction: {direction}, source files: {count}'.",
+                    "constraints": "Direction must be unambiguous. When both formats present, user must explicitly specify direction.",
+                    "Error": "AMBIGUOUS_SOURCE → 'Source directory contains both .aisop.json and .aisip.json files. Please specify direction parameter.' NO_SOURCE → 'No .aisop.json or .aisip.json files found in {source_path}.' SEVERITY: CRITICAL."
+                },
+                "CreateDir": {
+                    "step1": "[ASSERT] DetectDir executed with valid direction. If false → go back to DetectDir. | Create target program directory: target_dir = target_store / program_name. (a) IF target_dir exists → PROMPT user: 'Target directory already exists: {target_dir}. Overwrite? [Yes/No]'. No → abort. Yes → proceed (existing files will be overwritten). (b) IF target_dir not exists → create directory via file_system.",
+                    "constraints": "WRITE SAFETY: verify target_store is writable before creating directory.",
+                    "Error": "DIR_EXISTS → prompt user. WRITE_FAILED → 'Cannot create directory: {target_dir}'. SEVERITY: CRITICAL."
+                },
+                "CopyData": {
+                    "step1": "[ASSERT] CreateDir executed. If false → go back to CreateDir. | Copy non-program files and subdirectories from source to target AS-IS (no conversion, no suffix): (a) Scan source_path for all files NOT matching *{source_ext}. (b) Scan for subdirectories (data/, templates/, examples/, etc.). (c) Copy each file and subdirectory to target_dir preserving relative paths. (d) Record data_files_copied count.",
+                    "constraints": "Data files are runtime dependencies — must be copied exactly as-is. Do not add _source suffix. Do not modify content. Preserve directory structure.",
+                    "Error": "Copy failure → WARNING + continue (non-blocking). Record failed files. SEVERITY: OPTIONAL."
+                },
+                "CopySource": {
+                    "step1": "[ASSERT] CopyData executed. If false → go back to CopyData. | Copy program files from source to target with _source suffix: (a) FOR each *{source_ext} file in source_path: copy to target_dir with '_source' appended (e.g., main.aisop.json → main.aisop.json_source). (b) Build file_list = [all _source files in target_dir]. (c) LOG: 'Copied {len(file_list)} source files for conversion'.",
+                    "constraints": "Source directory is READ-ONLY — never modify source files. _source files serve as conversion input and post-conversion verification reference.",
+                    "Error": "WRITE_FAILED → 'Cannot copy source file: {filename}'. SEVERITY: CRITICAL."
+                },
+                "Scan": {
+                    "step1": "[ASSERT] CopySource executed. If false → go back to CopySource. | Verify file_list is non-empty. Sort file_list alphabetically for deterministic processing order. Set conversion_index = 0.",
+                    "constraints": "file_list must contain at least 1 valid source file.",
+                    "Error": "Empty file_list should have been caught by DetectDir. Defensive check only."
+                },
+                "NextFile": {
+                    "step1": "Check if conversion_index < len(file_list). IF yes → proceed to ReadSource with file_list[conversion_index]. IF no → all files converted, proceed to AlignDocs.",
+                    "constraints": "Sequential processing — one file at a time to avoid token overflow."
+                },
+                "ReadSource": {
+                    "step1": "[ASSERT] NextFile routed here. | Read current _source file JSON via file_system. Parse JSON structure. Extract: (a) §4 flow graph (aisop.main / aisop.* keys for Mermaid, or aisip.main / aisip.* keys for JSON flow). (b) §5 functions dict. (c) §2 metadata (protocol, id, name, version, summary, description, tools, params, system_prompt). (d) All other fields (output_mode, loading_mode, fractal_exempt, execution, etc.).",
+                    "constraints": "Parse must succeed for conversion to proceed. Preserve all fields not in §4.",
+                    "Error": "PARSE_FAILED → 'Invalid JSON in {filename}: {parse_error}'. Skip this file, log WARNING, increment conversion_index, continue to NextFile. SEVERITY: IMPORTANT."
+                },
+                "ConvertFlow": {
+                    "step1": "[ASSERT] ReadSource executed with valid JSON. If false → go back to ReadSource. | CONVERT §4 TOPOLOGY — the ONLY transformation needed (E3 correction: AISOP and AISIP differ only in §4 flow representation).",
+                    "step2": "IF direction == AISOP_TO_AISIP (Mermaid → JSON flow dict): FOR each aisop.* key (main, sub_mermaid keys): (a) Parse Mermaid text — extract nodes and edges using flowchart subset parser. SUPPORTED SYNTAX (per Mermaid flow.jison grammar): node shapes [label], {label}, ((label)), ([label]), [/label/]; edge types --> (next), -->|label| (conditional), -.-> (error); subgraph blocks. (b) Build JSON flow dict: FOR each extracted node: determine outgoing edges. 0 outgoing → {} (end node). 1 outgoing normal → {\"next\": [\"target\"]}. 2+ outgoing normal (no labels) → {\"next\": [\"t1\", \"t2\"]} (fork). 1+ conditional edges (|label|) → {\"branches\": {\"label1\": \"t1\", \"label2\": \"t2\"}}. dotted edge (-.->)  → add \"error\": \"target\" to node dict. delegate pattern → {\"delegate_to\": \"sub_name\", \"next\": [\"return\"]}. wait pattern → {\"wait_for\": [...], \"next\": [\"target\"]}. (c) ORDERING: first key = entry node (first node in Mermaid), last {} = end node. (d) Replace aisop.* key with aisip.* key (prefix substitution). (e) VERIFY: all edge targets exist as keys in flow dict. Missing target → FLOW_CONVERT_FAILED.",
+                    "step3": "IF direction == AISIP_TO_AISOP (JSON flow dict → Mermaid): FOR each aisip.* key: (a) Read JSON flow dict entries. (b) Infer node type using infer_node_type() rules (E1: no type field): {} → end, {branches} → decision, {wait_for} → join, {delegate_to} → delegate, {next:[a,b]} → fork, {next:[a]} → process. (c) Generate Mermaid text: 'graph TD\\n'. FOR each node: end → 'NodeName((End))'. process → 'NodeName[NodeName] --> target'. decision → 'NodeName{NodeName}' + '-->|branch| target' per branch. fork → 'NodeName[NodeName]' + '--> t1' + '--> t2'. delegate → generate sub_mermaid key. join → comment annotation. IF node has \"error\" → 'NodeName -.-> ErrorTarget'. (d) Replace aisip.* key with aisop.* key. (e) VERIFY: generated Mermaid re-parses to equivalent graph.",
+                    "step4": "ROUND-TRIP VERIFICATION PREPARATION (per Lossless Syntax Tree Pattern best practice): Store original_node_count = count of nodes in source format. Store original_edge_set = set of (from, to, label) tuples. These will be compared against converted output in step4 PROMPT for structural equivalence verification. DELEGATE PATH RECURSIVE VALIDATION (B1 v1.15.0 — feature hardening): After §4 topology conversion, scan converted output for delegate_to references. For each delegate_to target: (1) Verify target module file exists in source directory (e.g., if delegate_to='advisor.main', verify advisor.aisop.json or advisor.aisip.json exists). (2) If target exists: record in delegation_chain = [{ source_node, target_module, target_exists: true }]. (3) If target does NOT exist in source AND does NOT exist in target directory: RED 'FLOW_CONVERT_DANGLING: delegate_to={target} references non-existent module. Conversion produces broken delegation chain.' (4) Build delegation_chain graph. If cycle detected (A→B→A): YELLOW 'DELEGATE_CYCLE: circular delegation detected: {chain}. Verify intentional.' (5) Log: 'DELEGATE VALIDATION: {total} delegate references checked, {valid} valid, {dangling} dangling, {cycles} cycles.'",
+                    "constraints": "§4 topology is the ONLY transformation. AISIP flow nodes have NO type field (E1 correction). Extensions (7 RESERVED_KEYS: on_error, retry_policy, context_filter, output_mapping, map, join, constraints) are in functions layer in BOTH protocols — NO position adjustment needed (E2 correction). Mermaid parser handles flowchart subset only (graph TD, graph LR). Special characters in labels must be handled (quotes, parentheses). Sub_mermaid / sub-flow keys must be converted with matching prefix substitution.",
+                    "Error": "FLOW_CONVERT_FAILED → 'Topology conversion failed for {filename}: {reason}. Common causes: unsupported Mermaid syntax, dangling edge reference, malformed JSON flow dict.' SEVERITY: CRITICAL — skip file, log detailed error, continue to next file."
+                },
+                "CopyRest": {
+                    "step1": "[ASSERT] ConvertFlow executed. If false → go back to ConvertFlow. | COPY all non-§4 content UNCHANGED: (a) §0 axiom fields — direct copy. (b) §2 metadata — direct copy (protocol, id, name, version, summary, description, tools, params, system_prompt). Adjust 'id' field: replace source_prefix with target_prefix in module id (e.g., 'aiap_program.main' stays same — id is program-level, not format-level). (c) §5 functions — BYTE-IDENTICAL copy. All steps, constraints, Error handlers, and 7 RESERVED_KEYS stay exactly as-is. NO modification whatsoever. (d) §6 variables — direct copy. (e) All other fields (output_mode, loading_mode, fractal_exempt, execution, density_metrics, etc.) — direct copy. (f) INSTRUCTION adjustment: replace 'RUN aisop.main' with 'RUN aisip.main' (or reverse). Replace 'ASSERT RUN aisop.main' with 'ASSERT RUN aisip.main' (or reverse).",
+                    "constraints": "Functions must be byte-identical between source and target. This is the core simplification from E2/E3 corrections — DUAL reduces to pure topology conversion. If any function content differs after copy → RED: COPY_INTEGRITY_VIOLATION.",
+                    "Error": "COPY_INTEGRITY_VIOLATION → halt conversion for this file. SEVERITY: CRITICAL."
+                },
+                "SaveTarget": {
+                    "step1": "[ASSERT] CopyRest executed. If false → go back to CopyRest. | Assemble complete target format JSON from converted §4 + copied §0/§2/§5/§6. Save to target_dir as target format file (e.g., main.aisip.json). Increment conversion_index. LOG: 'Converted: {source_filename} → {target_filename} ({node_count} nodes)'.",
+                    "constraints": "WRITE SAFETY: atomic write (.tmp then rename). Verify written file is valid JSON by re-reading and parsing.",
+                    "Error": "WRITE_FAILED → 'Cannot write target file: {filename}'. SEVERITY: CRITICAL."
+                },
+                "AlignDocs": {
+                    "step1": "[ASSERT] All files converted (NextFile → no). If false → go back to NextFile. | Copy and adjust governance files from source to target: (a) AIAP.md: copy from source. Adjust: instruction → target format ('RUN aisop.main' ↔ 'RUN aisip.main'), modules list → target format file names, supported_formats → target format only. (b) agent_card.json: copy from source. Adjust: modules → target format names, description unchanged. (c) quality_baseline.json: copy from source. Adjust file references to target format. (d) protocol_config.json: copy as-is (if exists). (e) creation_experience.json: copy as-is (if exists). (f) GOVERNANCE_HASH: compute SHA-256 of all target format files (sorted alphabetically, concatenated). Write to AIAP.md governance_hash field.",
+                    "step2": "VERSION PRESERVATION: do NOT change version numbers during conversion. Conversion is format migration, not evolution. Source v1.2.0 → target v1.2.0.",
+                    "constraints": "Governance files must accurately reflect target format. governance_hash must only include target format files. Version stays unchanged.",
+                    "Error": "Missing governance file in source → WARNING, generate minimal version. SEVERITY: OPTIONAL."
+                },
+                "GenManifest": {
+                    "step1": "[ASSERT] AlignDocs executed. If false → go back to AlignDocs. | Generate conversion_manifest.json in target_dir (per multi-file migration best practice, Nx/Changesets pattern): { \"source_program\": \"{source_path}\", \"target_program\": \"{target_dir}\", \"direction\": \"{direction}\", \"timestamp\": \"{ISO_8601}\", \"files_converted\": [{\"source\": \"name.aisop.json\", \"target\": \"name.aisip.json\", \"nodes\": N}], \"data_files_copied\": [\"data/file.yaml\"], \"governance_aligned\": [\"AIAP.md\", \"agent_card.json\"], \"governance_hash\": \"{hash}\", \"round_trip_hint\": \"Run reverse conversion and verify structural equivalence for lossless validation\" }.",
+                    "constraints": "Manifest is metadata only — does not affect program execution. Provides audit trail for conversion provenance.",
+                    "Error": "Write failure → WARNING only (manifest is optional metadata). SEVERITY: OPTIONAL."
+                },
+                "OutputSummary": {
+                    "step1": "[ASSERT] GenManifest executed. If false → go back to GenManifest. | Present conversion summary to user: (a) Direction: {AISOP_TO_AISIP / AISIP_TO_AISOP}. (b) Source: {source_path} ({source_count} modules). (c) Target: {target_dir} ({target_count} files generated). (d) Data files: {data_count} copied as-is. (e) Manifest: conversion_manifest.json generated.",
+                    "step2": "VERIFICATION CHECKLIST — prompt user to execute these checks using Creator's existing capabilities: (1) Creator validate mode → ThreeDimTest + MF1-MF35 on target program. (2) Creator simulate mode → scenario coverage on target program. (3) DUAL-C1 verification → diff(source.functions, target.functions) == empty (compare _source vs target). (4) DUAL-D1 verification → source_node_count == target_node_count. (5) DUAL-D2 verification → topology isomorphism (edge set comparison). (6) ROUND-TRIP verification (optional) → convert target back to source format, verify structural equivalence (per Lossless Syntax Tree Pattern). (7) All checks PASS → delete *_source files from target directory for clean final state. ROUND-TRIP TOLERANCE SPECIFICATION (B1 v1.15.0 — completeness): Define explicit ROUND_TRIP_TOLERANCES for structural equivalence assessment: { node_count_tolerance: 0 (must match exactly), edge_set_tolerance: 0 (must match exactly — same from/to/label tuples), label_reordering_allowed: true (JSON key order is not semantically significant), node_naming_drift_allowed: false (node names must be preserved), whitespace_normalization: true (Mermaid whitespace differences ignored) }. When executing round-trip check (6), apply these tolerances: node_count mismatch → RED, edge_set mismatch → RED, label reorder only → GREEN, naming drift → RED. Report: 'ROUND-TRIP: node_count {original}→{roundtrip} ({PASS|FAIL}), edge_set {PASS|FAIL}, naming {PASS|FAIL}.'",
+                    "step3": "LOG conversion completion: 'CONVERT COMPLETE: {source_path} ({direction}) → {target_dir}. {file_count} files converted, {data_count} data files copied. Run Creator validate + simulate for full verification.'",
+                    "constraints": "Convert module does NOT execute verification itself — it only prompts. Verification uses Creator's existing validate/simulate capabilities (separation of concerns). This ensures convert stays simple and verification evolves independently.",
+                    "Error": "None — output step cannot fail."
+                }
+            }
+        }
+    }
+]

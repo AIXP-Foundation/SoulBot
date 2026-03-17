@@ -38,9 +38,9 @@ htmlcov/
 # Node (frontend)
 node_modules/
 
-# SoulBot runtime data
+# RealBot runtime data
 data/
-.soulbot_schedules.json
+.realbot_schedules.json
 *.db
 *.sqlite
 

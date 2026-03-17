@@ -1,0 +1,89 @@
+{
+    "program": "intent_classifier_aiap",
+    "version": "3.1.0",
+    "pipeline": "creator_v3.7.0_evolve",
+    "timestamp": "2026-03-09T12:00:00Z",
+    "evolution_from": "3.0.0",
+    "three_dim_test": {
+        "tier": "Standard",
+        "weights": { "C": 0.25, "I": 0.45, "D": 0.30 },
+        "cognitive": {
+            "score": 5.00,
+            "grade": "A",
+            "items": { "C1": 5, "C2": 5, "C3": 5, "C4": 5, "C5": 5, "C6": 5, "C7": 5 }
+        },
+        "intrinsic": {
+            "score": 5.00,
+            "grade": "A",
+            "items": { "I1": 5, "I2": 5, "I3": 5, "I4": 5, "I5": 5, "I6": 5, "I7": 5, "I12": 5 },
+            "na_items": ["I8", "I9", "I10", "I11", "I13"]
+        },
+        "detail": {
+            "score": 4.90,
+            "grade": "A",
+            "items": { "D1": 5, "D2": 5, "D3": 5, "D4": 5, "D5": 5, "D6": 5, "D7": 5, "D8": 4, "D9": 5, "D10": 5 }
+        },
+        "weighted_score": 4.970,
+        "grade": "S"
+    },
+    "regression_check": {
+        "old_weighted_score": 4.970,
+        "new_weighted_score": 4.970,
+        "delta": 0.000,
+        "status": "no_regression"
+    },
+    "simulation": {
+        "scenarios_total": 75,
+        "scenarios_passed": 75,
+        "pass_rate": 1.0,
+        "categories": ["normal_path", "context_anaphora", "context_continuity", "context_switch", "context_preference", "cache_invalidation", "clarification_loop", "error_degradation", "security", "data_management", "session_management", "learning_metadata", "multi_intent_detection", "multi_intent_same_domain", "out_of_scope_rejection", "adaptive_threshold", "session_ttl_expiry", "adaptive_threshold_cold_start", "parallel_solve_multi_intent", "incremental_taxonomy_insert", "incremental_taxonomy_fail_fallback", "confidence_calibration_ambiguous", "correction_weighted_taxonomy", "graduated_degradation_medium_tier", "semantic_cache_exact_hit", "semantic_cache_similarity_hit", "semantic_cache_context_guard", "multilingual_code_switching", "active_learning_needs_review", "oos_near_domain_suggestion", "strict_execution_trace", "violation_report_degrade", "cascading_fast_path", "cascading_ambiguous_fallback", "output_schema_contract_single", "output_schema_fallback_minimum", "hard_negative_oos_penalty", "execution_failure_feedback_decay", "early_exit_fast_reject", "early_exit_safety_margin", "postprocess_merged_session_learn", "postprocess_step_independence", "inline_trace_completeness", "inline_trace_data_integrity", "circuit_breaker_open_datasync", "circuit_breaker_half_open_recovery", "circuit_breaker_half_open_fail", "circuit_breaker_open_postprocess", "confidence_attribution_weights", "confidence_attribution_fast_path", "trace_summary_single", "trace_summary_multi", "semantic_compression_integrity", "value_aware_evict_freq", "value_aware_evict_freshness", "value_aware_evict_tier", "drift_detection_trigger", "drift_detection_cold_start", "degradation_score_warn", "degradation_score_alert", "tiered_ttl_high_extended", "tiered_ttl_low_expired", "tiered_ttl_medium_boundary", "adaptive_cb_first_failure", "adaptive_cb_clamp_max", "adaptive_cb_clamp_min", "degradation_trend_worsening", "input_safety_injection_flag", "latency_tracking_start_ts", "latency_tracking_learn_log", "smart_invalidation_retain_high", "smart_invalidation_remove_stale", "metrics_window_adaptive", "metrics_window_degradation", "metrics_window_archive"]
+    },
+    "evolution_notes": {
+        "changes": [
+            "C1: Assertion execution — instruction RUN→ASSERT RUN aisop.main; execution.mode strict→assert",
+            "C2: Node Gate — 10 non-start nodes with [ASSERT] {prev_node} executed gate at S1 opening per Protocol Appendix F",
+            "C3: Multi-predecessor gates — RecursiveClassify (IntentRoute∨Start∨ClarifyAsk), OutputResult (QualityGate∨SmartShortcut∨SemanticCache)",
+            "C4: agent_card.json synced v2.3.0→v3.0.0 (description, tags, limitations, generator)",
+            "C5: quality_baseline.json synced v2.3.0→v3.0.0",
+            "C6: Tags compressed 75→25 (AIAP.md + agent_card.json)",
+            "C7: Quality score aligned AIAP.md 4.990→4.970 (matched quality_baseline actual weighted_score)"
+        ],
+        "v3.1.0_changes": [
+            "B1: Context-aware fast routing — SmartShortcut enhanced with 3 context signals (session pattern conf 0.93, domain affinity conf 0.90, temporal match conf 0.92). Bypasses 4-node chain",
+            "C1: Mermaid cleanup — removed phantom nodes TypeGate/PostGate/ReturnParent/End, added endNode. SmartShortcut edge fast",
+            "C2: ASSERT backtrack targets — RecursiveClassify go back to IntentRoute, OutputResult go back to QualityGate",
+            "C3: k-bounded backtrack — max_backtrack_depth=2, backtrack_exceeded=halt_with_diagnostic",
+            "C4: agent_card generator updated v3.3.0→v3.7.0"
+        ],
+        "remaining_yellow": [
+            "D8: AIAP.md updated to v3.0.0 — resolved per stage",
+            "NODE_GATE: backtrack overhead adds ~10 tokens/node; total ~100 tokens for 10 gates",
+            "I12: Tool annotations compact format — consider structured for future",
+            "GDPR: session TTL 2h — monitor compliance",
+            "CACHE: hashed keys only — privacy compliant",
+            "ACTIVE_LEARNING: needs_review requires human review loop integration",
+            "DYNAMIC_CALIBRATION: requires sufficient correction data (>30 entries)",
+            "FAST_PATH: keyword overlap detection is conservative",
+            "EXECUTION_FAILURE: penalty decay requires timestamp tracking per input-AIAP pairing",
+            "OUTPUT_SCHEMA: fallback minimum schema loses confidence_tier and attribution",
+            "EARLY_EXIT: safety margin (half threshold) may miss some obvious OOS",
+            "POSTPROCESS_MERGE: step-independence relies on executor honoring constraints",
+            "INLINE_TRACE: trace data structure must match schema expectations",
+            "ATTRIBUTION_WEIGHTS: weight calculation is LLM-estimated, not ML-trained",
+            "TRACE_SUMMARY: not included in rejection output (by design)",
+            "SEMANTIC_COMPRESSION: symbols (∧,∨,→,@,≤,≥) are universally understood; ∅ replaced with natural language",
+            "VALUE_AWARE_EVICTION: freq counter is in-memory per session; resets if cache.json reloaded from disk",
+            "DRIFT_DETECTION: requires ≥100 entries; systems with low traffic may never trigger drift analysis",
+            "DEGRADATION_SCORE: threshold 0.3 is static; consider adaptive threshold based on historical baseline",
+            "CACHE_FRESHNESS: only meaningful for cache hits; null for misses and new classifications",
+            "TIERED_TTL: TTL determined at cache creation time; tier changes from recalibration don't update existing entries",
+            "ADAPTIVE_CB_TIMEOUT: timeout formula uses consecutive failure count; resets to base on circuit close",
+            "DEGRADATION_TREND: requires at least 2 metrics calculations for delta comparison; first calculation has no trend",
+            "INPUT_SAFETY: pattern matching is keyword-based; sophisticated obfuscated injections may bypass detection",
+            "INPUT_SAFETY: flag-only design means injection inputs are still classified; monitor flagged rate for escalation policy",
+            "LATENCY_TRACKING: latency_ms depends on executor's timing accuracy; LLM execution time may vary significantly",
+            "SMART_INVALIDATION: retention decision based on tier at cache creation time; reclassified inputs may have different tiers",
+            "METRICS_WINDOW: window sizes are AISOP-level constants; runtime changes require blueprint update"
+        ]
+    }
+}

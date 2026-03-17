@@ -171,6 +171,7 @@ class Runner:
                 ))
 
             # 6. Record assistant response to chat history (Doc 22)
+            #    Split L1 (human text) / L2 (audit JSON) before saving
             if self._history_service and event.is_final_response():
                 final_text = ""
                 if event.content:
@@ -179,9 +180,11 @@ class Runner:
                     )
                 if final_text:
                     try:
+                        from ..l2_splitter import split_l2
+                        split = split_l2(final_text)
                         await self._history_service.add_message(
                             user_id, self.agent_name, session_id,
-                            "assistant", final_text,
+                            "assistant", split.l1, l2_json=split.l2_json,
                         )
                     except Exception as exc:
                         logger.warning("History write failed (assistant): %s", exc)

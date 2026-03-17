@@ -50,6 +50,10 @@ export const useAgentStore = defineStore('agent', () => {
     return api<AisopInfo[]>(`/agents/${agentName}/aisops`)
   }
 
+  async function loadAisips(agentName: string): Promise<AisopInfo[]> {
+    return api<AisopInfo[]>(`/agents/${agentName}/aisips`)
+  }
+
   async function deleteAisop(agentName: string, path: string) {
     await apiPost(`/agents/${agentName}/aisops/delete`, { path })
   }
@@ -78,6 +82,7 @@ export const useAgentStore = defineStore('agent', () => {
     createAgent,
     deleteAgent,
     loadAisops,
+    loadAisips,
     deleteAisop,
     loadAisopLibrary,
     addAisopFromLibrary,

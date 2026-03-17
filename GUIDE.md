@@ -245,7 +245,7 @@ from pathlib import Path
 from soulbot.agents import LlmAgent
 
 _AGENT_DIR = Path(__file__).parent
-_AIAP_DIR = (_AGENT_DIR / os.getenv("WORKSPACE_DIR", "aiap")).resolve()
+_AIAP_DIR = (_AGENT_DIR / os.getenv("WORKSPACE_DIR", "aisip_aiap")).resolve()
 
 _SYSTEM_PROMPT = (
     "You are the AISOP Runtime. "
@@ -462,7 +462,7 @@ OPENCLAW_TOKEN=
 ENABLE_FALLBACK=false         # 失败自动切换备用模型
 AUTO_APPROVE_PERMISSIONS=true # 自动批准 CLI 权限请求
 SHOW_THOUGHTS=false           # 显示 AI 思考过程
-WORKSPACE_DIR=aiap            # AIAP 包目录（相对于 Agent 目录）
+WORKSPACE_DIR=aisip_aiap      # AIAP 包目录（相对于 Agent 目录）
 ```
 
 ---

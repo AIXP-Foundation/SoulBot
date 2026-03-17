@@ -17,6 +17,7 @@ class ChatMessage(BaseModel):
     session_id: str = ""
     role: str = ""  # "user" | "assistant"
     content: str = ""
+    l2_json: str = ""  # L2 audit JSON (assistant only)
     created_at: int = 0  # unix timestamp (seconds)
 
 
@@ -35,6 +36,7 @@ class BaseChatHistoryService(ABC):
         session_id: str,
         role: str,
         content: str,
+        l2_json: str = "",
     ) -> None:
         """Record a single chat message."""
         ...

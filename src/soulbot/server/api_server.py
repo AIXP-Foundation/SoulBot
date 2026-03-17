@@ -61,11 +61,23 @@ class AddFromLibraryRequest(BaseModel):
 
 class DownloadFromStoreRequest(BaseModel):
     program: str
+    repo: str = ""
+    store_type: str = "aisop"
 
 
 class InstallFromStoreRequest(BaseModel):
     program: str
     agent_name: str
+    repo: str = ""
+    store_type: str = "aisop"
+
+
+class AddRepoRequest(BaseModel):
+    repo: str
+
+
+class RemoveRepoRequest(BaseModel):
+    repo: str
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +97,8 @@ def create_app(
     heartbeat_store: object | None = None,
     cli_name: str | None = None,
     dev_ui: bool = True,
+    bus: object | None = None,
+    cmd_executor: object | None = None,
 ) -> FastAPI:
     """Create a FastAPI application wired with agent runners.
 
@@ -121,18 +135,50 @@ def create_app(
 
     runners: dict[str, Runner] = {}
 
-    # ---- AIAP Store cache -----------------------------------------------
-    _store_cache: dict = {"data": None, "expires": 0.0}
-    GITHUB_REPO = "AIXP-Foundation/AIAP-Store"
-    GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/contents"
-    GITHUB_STORE_API = f"{GITHUB_API}/aiap_store"
-    GITHUB_RAW = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/aiap_store"
+    # ---- AIAP Store repos & cache ----------------------------------------
+    DEFAULT_REPO = "AIXP-Foundation/AIAP-Store"
     CACHE_TTL = 300  # 5 minutes
+    # Per-repo cache: {repo: {"data": [...], "expires": float}}
+    _store_cache: dict[str, dict] = {}
+
+    def _repos_file() -> Path | None:
+        if _agents_dir is None:
+            return None
+        return _agents_dir / "aiap_store_repos.json"
+
+    def _load_repos() -> list[str]:
+        """Load repo list from persistent file."""
+        f = _repos_file()
+        if f and f.is_file():
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    repos = [r for r in data if isinstance(r, str) and "/" in r]
+                    if DEFAULT_REPO not in repos:
+                        repos.insert(0, DEFAULT_REPO)
+                    return repos
+            except (json.JSONDecodeError, OSError):
+                pass
+        return [DEFAULT_REPO]
+
+    def _save_repos(repos: list[str]) -> None:
+        f = _repos_file()
+        if f:
+            f.write_text(json.dumps(repos, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _github_urls(repo: str, store_type: str = "aisop") -> tuple[str, str, str]:
+        """Return (store_api, raw_base, github_tree) for a repo."""
+        store_dir = f"{store_type}_aiap_store"
+        api_base = f"https://api.github.com/repos/{repo}/contents"
+        store_api = f"{api_base}/{store_dir}"
+        raw_base = f"https://raw.githubusercontent.com/{repo}/main/{store_dir}"
+        return store_api, raw_base, repo
 
     if agents:
         for name, agent in agents.items():
             runners[name] = Runner(
                 agent=agent, app_name=_cli_name or name, session_service=svc,
+                bus=bus, cmd_executor=cmd_executor,
             )
     elif agents_dir:
         import logging
@@ -146,6 +192,7 @@ def create_app(
                 continue
             runners[name] = Runner(
                 agent=agent, app_name=_cli_name or name, session_service=svc,
+                bus=bus, cmd_executor=cmd_executor,
             )
 
     # ---- System endpoints -----------------------------------------------
@@ -250,10 +297,21 @@ def create_app(
             raise HTTPException(400, "Requires agents_dir mode")
         if agent_name not in runners:
             raise HTTPException(404, f"Agent '{agent_name}' not found")
-        aisop_dir = _agents_dir / agent_name / "aiap"
+        aisop_dir = _agents_dir / agent_name / "aisop_aiap"
         if not aisop_dir.is_dir():
             return []
         return _scan_aisops(aisop_dir)
+
+    @app.get("/agents/{agent_name}/aisips")
+    async def list_agent_aisips(agent_name: str):
+        if _agents_dir is None:
+            raise HTTPException(400, "Requires agents_dir mode")
+        if agent_name not in runners:
+            raise HTTPException(404, f"Agent '{agent_name}' not found")
+        aisip_dir = _agents_dir / agent_name / "aisip_aiap"
+        if not aisip_dir.is_dir():
+            return []
+        return _scan_aisops(aisip_dir, pattern="*.aisip.json")
 
     @app.post("/agents/{agent_name}/aisops/delete")
     async def delete_agent_aisop(agent_name: str, req: DeleteAisopRequest):
@@ -262,8 +320,8 @@ def create_app(
         if agent_name not in runners:
             raise HTTPException(404, f"Agent '{agent_name}' not found")
         p = req.path.replace("\\", "/")
-        if not p.startswith("aiap/"):
-            raise HTTPException(400, "Invalid AISOP path")
+        if not (p.startswith("aisop_aiap/") or p.startswith("aisip_aiap/")):
+            raise HTTPException(400, "Invalid path")
         if ".." in p:
             raise HTTPException(400, "Path traversal not allowed")
         # Resolve and verify within agent directory
@@ -279,7 +337,7 @@ def create_app(
                 raise HTTPException(404, f"AISOP file not found: {req.path}")
             target.unlink()
             return {"path": req.path, "status": "deleted"}
-        # Case 2: Delete an entire group folder (e.g. "aiap/code_creator_aiap")
+        # Case 2: Delete an entire group folder (e.g. "aisop_aiap/code_creator_aiap")
         if not target.is_dir():
             raise HTTPException(404, f"AISOP group not found: {req.path}")
         shutil.rmtree(target, ignore_errors=True)
@@ -305,37 +363,77 @@ def create_app(
         src = _agents_dir / "aiap_store" / req.group
         if not src.is_dir():
             raise HTTPException(404, f"Library package '{req.group}' not found")
-        dest = _agents_dir / agent_name / "aiap" / req.group
+        dest = _agents_dir / agent_name / "aisop_aiap" / req.group
         if dest.exists():
             raise HTTPException(409, f"'{req.group}' already exists in this agent")
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(src, dest)
         return {"group": req.group, "status": "added"}
 
+    # ---- AIAP Store repo management --------------------------------------
+
+    @app.get("/aiap-store/repos")
+    async def list_store_repos():
+        return _load_repos()
+
+    @app.post("/aiap-store/repos/add")
+    async def add_store_repo(req: AddRepoRequest):
+        repo = req.repo.strip()
+        if "/" not in repo or len(repo.split("/")) != 2:
+            raise HTTPException(400, "Invalid format. Use 'owner/repo'")
+        repos = _load_repos()
+        if repo in repos:
+            raise HTTPException(409, f"'{repo}' already exists")
+        repos.append(repo)
+        _save_repos(repos)
+        return {"repo": repo, "status": "added"}
+
+    @app.post("/aiap-store/repos/remove")
+    async def remove_store_repo(req: RemoveRepoRequest):
+        repo = req.repo.strip()
+        if repo == DEFAULT_REPO:
+            raise HTTPException(400, "Cannot remove the default repository")
+        repos = _load_repos()
+        if repo not in repos:
+            raise HTTPException(404, f"'{repo}' not found")
+        repos.remove(repo)
+        _save_repos(repos)
+        _store_cache.pop(repo, None)
+        return {"repo": repo, "status": "removed"}
+
     # ---- AIAP Store endpoints -------------------------------------------
 
     @app.get("/aiap-store/programs")
-    async def list_store_programs():
-        """List available AIAP programs from the GitHub AIAP-Store repo."""
+    async def list_store_programs(repo: str = "", store_type: str = "aisop"):
+        """List available AIAP programs from a GitHub repo."""
         import logging
         _log = logging.getLogger(__name__)
 
+        if store_type not in ("aisop", "aisip"):
+            store_type = "aisop"
+
+        target_repo = repo or DEFAULT_REPO
+        cache_key = f"{target_repo}:{store_type}"
+        store_api, raw_base, gh_repo = _github_urls(target_repo, store_type)
+
         now = time.time()
-        if _store_cache["data"] is not None and now < _store_cache["expires"]:
-            return _store_cache["data"]
+        cached = _store_cache.get(cache_key)
+        if cached and cached["data"] is not None and now < cached["expires"]:
+            return cached["data"]
 
         try:
-            req = urllib.request.Request(
-                GITHUB_STORE_API,
+            r = urllib.request.Request(
+                store_api,
                 headers={"Accept": "application/vnd.github.v3+json",
                          "User-Agent": "SoulBot/1.0"},
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(r, timeout=10) as resp:
                 contents = json.loads(resp.read().decode())
         except (urllib.error.URLError, urllib.error.HTTPError) as exc:
             _log.warning("Failed to fetch AIAP Store listing: %s", exc)
             raise HTTPException(502, f"Failed to reach GitHub API: {exc}")
 
+        store_dir = f"{store_type}_aiap_store"
         programs = []
         for item in contents:
             if item.get("type") != "dir":
@@ -343,14 +441,13 @@ def create_app(
             name = item["name"]
             if not name.endswith("_aiap"):
                 continue
-            meta = _fetch_aiap_metadata(name, _log)
+            meta = _fetch_aiap_metadata(name, raw_base, gh_repo, store_dir, _log)
             programs.append(meta)
 
-        _store_cache["data"] = programs
-        _store_cache["expires"] = now + CACHE_TTL
+        _store_cache[cache_key] = {"data": programs, "expires": now + CACHE_TTL}
         return programs
 
-    def _fetch_aiap_metadata(program_name: str, _log) -> dict:
+    def _fetch_aiap_metadata(program_name: str, raw_base: str, gh_repo: str, store_dir: str, _log) -> dict:
         """Fetch and parse AIAP.md YAML frontmatter for a program."""
         import yaml
 
@@ -364,15 +461,15 @@ def create_app(
             "quality_score": 0.0,
             "trust_level": "",
             "module_count": 0,
-            "github_url": f"https://github.com/{GITHUB_REPO}/tree/main/aiap_store/{program_name}",
+            "github_url": f"https://github.com/{gh_repo}/tree/main/{store_dir}/{program_name}",
         }
 
         try:
-            url = f"{GITHUB_RAW}/{program_name}/AIAP.md"
-            req = urllib.request.Request(
+            url = f"{raw_base}/{program_name}/AIAP.md"
+            r = urllib.request.Request(
                 url, headers={"User-Agent": "SoulBot/1.0"}
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(r, timeout=10) as resp:
                 content = resp.read().decode()
         except (urllib.error.URLError, urllib.error.HTTPError):
             _log.debug("No AIAP.md found for %s", program_name)
@@ -437,13 +534,18 @@ def create_app(
         if not req.program.endswith("_aiap"):
             raise HTTPException(400, "Program name must end with '_aiap'")
 
-        dest = _agents_dir / "aiap_store" / req.program
+        st = req.store_type if req.store_type in ("aisop", "aisip") else "aisop"
+        target_repo = req.repo or DEFAULT_REPO
+        store_api, _, _ = _github_urls(target_repo, st)
+
+        local_store = f"{st}_aiap_store"
+        dest = _agents_dir / local_store / req.program
         if dest.exists():
             raise HTTPException(409, f"'{req.program}' already exists in local library")
 
         try:
             files_count = _download_github_dir(
-                f"{GITHUB_STORE_API}/{req.program}", dest, _log
+                f"{store_api}/{req.program}", dest, _log
             )
         except Exception as exc:
             if dest.exists():
@@ -459,7 +561,7 @@ def create_app(
 
     @app.post("/aiap-store/install")
     async def install_from_store(req: InstallFromStoreRequest):
-        """Download an AIAP program from GitHub and install to agent's aiap/ dir."""
+        """Download an AIAP program from GitHub and install to agent's aiap dir."""
         import logging
         _log = logging.getLogger(__name__)
 
@@ -473,7 +575,12 @@ def create_app(
         if not req.program.endswith("_aiap"):
             raise HTTPException(400, "Program name must end with '_aiap'")
 
-        dest = _agents_dir / req.agent_name / "aiap" / req.program
+        st = req.store_type if req.store_type in ("aisop", "aisip") else "aisop"
+        target_repo = req.repo or DEFAULT_REPO
+        store_api, _, _ = _github_urls(target_repo, st)
+
+        install_dir = f"{st}_aiap"
+        dest = _agents_dir / req.agent_name / install_dir / req.program
         if dest.exists():
             raise HTTPException(
                 409, f"'{req.program}' already exists in agent '{req.agent_name}'"
@@ -481,7 +588,7 @@ def create_app(
 
         try:
             files_count = _download_github_dir(
-                f"{GITHUB_STORE_API}/{req.program}", dest, _log
+                f"{store_api}/{req.program}", dest, _log
             )
         except Exception as exc:
             if dest.exists():
@@ -697,16 +804,16 @@ def _session_detail(session) -> dict:
     }
 
 
-def _scan_aisops(aisop_dir: Path) -> list[dict]:
-    """Scan an aisop/ directory for .aisop.json files and extract summaries."""
+def _scan_aisops(aisop_dir: Path, pattern: str = "*.aisop.json") -> list[dict]:
+    """Scan a directory for AISOP/AISIP files and extract summaries."""
     import logging
     _log = logging.getLogger(__name__)
     results: list[dict] = []
 
-    for f in sorted(aisop_dir.rglob("*.aisop.json")):
+    for f in sorted(aisop_dir.rglob(pattern)):
         rel = f.relative_to(aisop_dir.parent)
         # Determine group: if file is nested in a subfolder under aisop/
-        parts = rel.parts  # e.g. ("aiap", "sub_group", "main.aisop.json")
+        parts = rel.parts  # e.g. ("aisip_aiap", "sub_group", "main.aisop.json")
         group = parts[1] if len(parts) > 2 else None
 
         try:

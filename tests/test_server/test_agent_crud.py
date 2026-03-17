@@ -147,7 +147,7 @@ class TestListAisops:
         """Agent with aisop files returns parsed summaries."""
         import json
         # Create aisop directory with a test file
-        aisop_dir = agents_dir / "existing_agent" / "aiap"
+        aisop_dir = agents_dir / "existing_agent" / "aisop_aiap"
         aisop_dir.mkdir(parents=True)
         aisop_file = aisop_dir / "main.aisop.json"
         aisop_file.write_text(json.dumps([
@@ -178,7 +178,7 @@ class TestListAisops:
     def test_grouped_aisop_files(self, client: TestClient, agents_dir: Path):
         """Nested subfolder AIOSPs should have group set."""
         import json
-        sub_dir = agents_dir / "existing_agent" / "aiap" / "my_group"
+        sub_dir = agents_dir / "existing_agent" / "aisop_aiap" / "my_group"
         sub_dir.mkdir(parents=True)
         (sub_dir / "detail.aisop.json").write_text(json.dumps([
             {"role": "system", "content": {"name": "Detail", "version": "0.1"}},
@@ -198,9 +198,9 @@ class TestDeleteAisop:
         """Helper to create an AISOP file."""
         import json
         if group:
-            d = agents_dir / "existing_agent" / "aiap" / group
+            d = agents_dir / "existing_agent" / "aisop_aiap" / group
         else:
-            d = agents_dir / "existing_agent" / "aiap"
+            d = agents_dir / "existing_agent" / "aisop_aiap"
         d.mkdir(parents=True, exist_ok=True)
         f = d / filename
         f.write_text(json.dumps([
@@ -212,23 +212,23 @@ class TestDeleteAisop:
     def test_delete_non_main(self, client: TestClient, agents_dir: Path):
         self._setup_aisop(agents_dir, "detail.aisop.json")
         resp = client.post("/agents/existing_agent/aisops/delete",
-                           json={"path": "aiap/detail.aisop.json"})
+                           json={"path": "aisop_aiap/detail.aisop.json"})
         assert resp.status_code == 200
         assert resp.json()["status"] == "deleted"
         # Verify file removed
-        assert not (agents_dir / "existing_agent" / "aiap" / "detail.aisop.json").exists()
+        assert not (agents_dir / "existing_agent" / "aisop_aiap" / "detail.aisop.json").exists()
 
     def test_delete_main_blocked(self, client: TestClient, agents_dir: Path):
         self._setup_aisop(agents_dir, "main.aisop.json")
         resp = client.post("/agents/existing_agent/aisops/delete",
-                           json={"path": "aiap/main.aisop.json"})
+                           json={"path": "aisop_aiap/main.aisop.json"})
         assert resp.status_code == 400
         assert "main.aisop.json" in resp.json()["detail"]
 
     def test_delete_grouped_main_blocked(self, client: TestClient, agents_dir: Path):
         self._setup_aisop(agents_dir, "main.aisop.json", group="sub_group")
         resp = client.post("/agents/existing_agent/aisops/delete",
-                           json={"path": "aiap/sub_group/main.aisop.json"})
+                           json={"path": "aisop_aiap/sub_group/main.aisop.json"})
         assert resp.status_code == 400
 
     def test_delete_group_folder(self, client: TestClient, agents_dir: Path):
@@ -236,37 +236,37 @@ class TestDeleteAisop:
         self._setup_aisop(agents_dir, "main.aisop.json", group="sub_group")
         self._setup_aisop(agents_dir, "detail.aisop.json", group="sub_group")
         resp = client.post("/agents/existing_agent/aisops/delete",
-                           json={"path": "aiap/sub_group"})
+                           json={"path": "aisop_aiap/sub_group"})
         assert resp.status_code == 200
         assert resp.json()["status"] == "deleted"
         # Verify folder removed
-        assert not (agents_dir / "existing_agent" / "aiap" / "sub_group").exists()
+        assert not (agents_dir / "existing_agent" / "aisop_aiap" / "sub_group").exists()
 
     def test_delete_group_not_found(self, client: TestClient, agents_dir: Path):
-        (agents_dir / "existing_agent" / "aiap").mkdir(parents=True, exist_ok=True)
+        (agents_dir / "existing_agent" / "aisop_aiap").mkdir(parents=True, exist_ok=True)
         resp = client.post("/agents/existing_agent/aisops/delete",
-                           json={"path": "aiap/nonexistent_group"})
+                           json={"path": "aisop_aiap/nonexistent_group"})
         assert resp.status_code == 404
 
     def test_delete_invalid_path(self, client: TestClient):
         resp = client.post("/agents/existing_agent/aisops/delete",
-                           json={"path": "not_aiap/file.json"})
+                           json={"path": "not_aisop_aiap/file.json"})
         assert resp.status_code == 400
 
     def test_delete_path_traversal(self, client: TestClient):
         resp = client.post("/agents/existing_agent/aisops/delete",
-                           json={"path": "aiap/../../../etc/passwd.aisop.json"})
+                           json={"path": "aisop_aiap/../../../etc/passwd.aisop.json"})
         assert resp.status_code == 400
 
     def test_delete_not_found_file(self, client: TestClient, agents_dir: Path):
-        (agents_dir / "existing_agent" / "aiap").mkdir(parents=True, exist_ok=True)
+        (agents_dir / "existing_agent" / "aisop_aiap").mkdir(parents=True, exist_ok=True)
         resp = client.post("/agents/existing_agent/aisops/delete",
-                           json={"path": "aiap/nonexistent.aisop.json"})
+                           json={"path": "aisop_aiap/nonexistent.aisop.json"})
         assert resp.status_code == 404
 
     def test_delete_not_found_agent(self, client: TestClient):
         resp = client.post("/agents/nonexistent/aisops/delete",
-                           json={"path": "aiap/detail.aisop.json"})
+                           json={"path": "aisop_aiap/detail.aisop.json"})
         assert resp.status_code == 404
 
 
@@ -341,7 +341,7 @@ class TestAddFromLibrary:
         assert resp.status_code == 200
         assert resp.json()["status"] == "added"
         # Verify copied
-        assert (agents_dir / "existing_agent" / "aiap" / "stock_aisop" / "main.aisop.json").is_file()
+        assert (agents_dir / "existing_agent" / "aisop_aiap" / "stock_aisop" / "main.aisop.json").is_file()
 
     def test_add_shows_in_agent_aisops(self, client: TestClient, agents_dir: Path):
         self._setup_lib_pkg(agents_dir)

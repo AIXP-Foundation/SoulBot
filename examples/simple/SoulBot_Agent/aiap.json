@@ -2,16 +2,16 @@
   {
     "name": "aiap_auto_evolution",
     "summary": "AIAP Auto Evolution — automated multi-round AIAP evolution orchestrator.",
-    "entry": "aiap/aiap_auto_evolution_aiap/main.aisop.json"
+    "entry": "aisop_aiap\\aiap_auto_evolution_aiap\\main.aisop.json"
   },
   {
     "name": "aiap_creator_evolution",
     "summary": "AIAP Creator — reference implementation for creating, evolving, validating, simulating, and managing AIAP programs via a 15-stage pipeline.",
-    "entry": "aiap/aiap_creator_evolution_aiap/main.aisop.json"
+    "entry": "aisop_aiap\\aiap_creator_evolution_aiap\\main.aisop.json"
   },
   {
     "name": "soulbot_chat",
     "summary": "SoulBot Chat — AI companion chatbot with long-term memory, user profiling, emotional support, and safety compliance.",
-    "entry": "aiap/soulbot_chat_aiap/main.aisop.json"
+    "entry": "aisop_aiap\\soulbot_chat_aiap\\main.aisop.json"
   }
 ]

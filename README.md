@@ -1,6 +1,6 @@
 # SoulBot
 
-**AI Agent Framework with AISOP Protocol and AIAP Package System**
+**AI Agent Framework with AISOP/AISIP Dual Protocol and AIAP Package System**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
@@ -12,14 +12,14 @@
 
 ## What is SoulBot?
 
-SoulBot is a Python-based AI Agent framework that connects to LLMs through CLI subprocesses (ACP protocol) — **no API keys required**. It introduces a unique architecture where agent behavior is defined by **AISOP blueprints** (`.aisop.json`) and extended through **AIAP packages** (`*_aiap`), making AI agent behavior deterministic, reproducible, and version-controlled.
+SoulBot is a Python-based AI Agent framework that connects to LLMs through CLI subprocesses (ACP protocol) — **no API keys required**. It introduces a unique architecture where agent behavior is defined by **AISOP blueprints** (`.aisop.json`, Mermaid flowcharts) or **AISIP blueprints** (`.aisip.json`, JSON flowcharts), and extended through **AIAP packages** (`*_aiap`), making AI agent behavior deterministic, reproducible, and version-controlled.
 
 ### Key Features
 
 - **No API Key Required** — Connects to LLMs via Claude Code / Gemini CLI / OpenCode CLI subprocesses
 - **Multi-Model Switching** — Claude, Gemini, OpenCode (Kimi, etc.) — switch with one line in `.env`
-- **AISOP-Driven** — Agent behavior defined by `.aisop.json` blueprints with mermaid flowcharts as deterministic execution paths
-- **AIAP Package System** — Hot-pluggable capability packages (`*_aiap`) that extend agent functionality
+- **AISOP/AISIP Dual Protocol** — Agent behavior defined by `.aisop.json` (Mermaid flowcharts) or `.aisip.json` (JSON flowcharts) blueprints with auto protocol detection
+- **AIAP Package System** — Hot-pluggable capability packages (`*_aiap`) with dual-format entry points (AISOP/AISIP), extending agent functionality
 - **Agent Composition** — Single agent, multi-agent routing, Sequential / Parallel / Loop workflows
 - **Tool System** — Python functions auto-wrapped as LLM-callable tools
 - **Multi-Channel** — Terminal CLI, Web Dev UI, Telegram Bot
@@ -51,6 +51,9 @@ pip install -e .
 ### Run
 
 ```bash
+# Simple mode (one-click Web Dev UI)
+python start.py
+
 # Web Dev UI (open http://127.0.0.1:8000)
 soulbot web --agents-dir examples/simple
 
@@ -71,11 +74,11 @@ This generates:
 
 ```
 my_agent/
-├── agent.py          # Agent definition (AISOP Runtime)
-├── main.aisop.json   # AISOP blueprint (intent routing)
+├── agent.py          # Agent definition (dual protocol runtime)
+├── main.aisop.json   # AISOP blueprint (Mermaid flowchart)
 ├── .env              # Configuration (model selection)
-└── aiap/             # AIAP package directory
-    └── README.md
+├── aisop_aiap/       # AISOP-format AIAP package directory
+└── aisip_aiap/       # AISIP-format AIAP package directory
 ```
 
 Edit `.env` to select your LLM backend, then run:
@@ -88,29 +91,30 @@ soulbot run my_agent
 
 ## Architecture
 
-### AISOP + AIAP
+### AISOP/AISIP + AIAP
 
-SoulBot introduces two core concepts:
+SoulBot introduces three core concepts:
 
 | Concept | Description |
 |---------|-------------|
-| **AISOP V1.0.0** | AI Standard Operating Procedure — a JSON-based blueprint protocol that defines agent behavior through mermaid flowcharts |
-| **AIAP Packages** | AI Application Packages — hot-pluggable capability modules (`*_aiap/`) with their own `main.aisop.json` entry points |
+| **AISOP V1.0.0** | AI Standard Operating Procedure — a JSON-based blueprint protocol that defines agent behavior through **Mermaid flowcharts** |
+| **AISIP V1.0.0** | AI Standard Interaction Procedure — AISOP's sister protocol that defines control flow through **JSON flowcharts**, sharing §0/§2/§5/§6 specs with AISOP, differing only in §4 flow format |
+| **AIAP Packages** | AI Application Packages — hot-pluggable capability modules (`*_aiap/`) with dual-format entry points (`main.aisop.json` or `main.aisip.json`) |
 
-**The key insight**: mermaid flowcharts serve as deterministic execution paths (like circuit diagrams), while prompts provide context and constraints (like component specifications). This separation makes agent behavior reproducible and version-controllable.
+**The key insight**: flowcharts serve as deterministic execution paths (like circuit diagrams), while prompts provide context and constraints (like component specifications). AISOP uses Mermaid syntax (ideal for visualization), AISIP uses JSON syntax (ideal for programmatic processing). This separation makes agent behavior reproducible and version-controllable.
 
 ```
 User Message
     ↓
 agent.py → _dynamic_instruction()
     ├── _SYSTEM_PROMPT (WHO — runtime identity)
-    ├── main.aisop.json (WHAT — routing rules)
-    └── [Available AIAP packages] (capabilities)
+    ├── main.aisop.json or main.aisip.json (WHAT — routing rules, auto-detected)
+    └── [Available AIAP packages] (capabilities, scanned from aisop_aiap/ and aisip_aiap/)
     ↓
-LLM follows mermaid flow:
-    NLU[Match Intent] → Run[Load & Execute *_aiap/main.aisop.json]
+LLM follows flowchart:
+    NLU[Match Intent] → Run[Load & Execute *_aiap/main.aisop.json or main.aisip.json]
     ↓
-AIAP package's mermaid flow executes domain-specific logic
+AIAP package's flow executes domain-specific logic
     ↓
 Response returned to user
 ```
@@ -134,7 +138,7 @@ Entry Points
          ↓
 Runner
 ├── Agent Tree       →  LlmAgent / SequentialAgent / ParallelAgent / LoopAgent
-├── AISOP Engine     →  main.aisop.json → mermaid flow → AIAP routing
+├── AISOP/AISIP Engine →  .aisop.json (Mermaid) / .aisip.json (JSON) → AIAP routing
 ├── Tool Calls       →  FunctionTool / AgentTool / TransferToAgentTool
 ├── CMD System       →  Embedded commands (scheduling, etc.)
 ├── Sessions         →  InMemory / SQLite + State delta
@@ -146,8 +150,7 @@ Model Layer
 └── ACPLlm           →  CLI subprocess JSON-RPC
      ├── ClaudeACPClient    (claude-acp/*)
      ├── GeminiACPClient    (gemini-acp/*)
-     ├── OpenCodeACPClient  (opencode-acp/*)
-     └── OpenClawClient     (openclaw/*)
+     └── OpenCodeACPClient  (opencode-acp/*)
 ```
 
 ---
@@ -232,12 +235,11 @@ root_agent = LoopAgent(name="refiner", sub_agents=[draft, review], max_iteration
 CLAUDE_CLI=true
 GEMINI_CLI=false
 OPENCODE_CLI=false
-OPENCLAW_CLI=false
 
 # Model names
 CLAUDE_MODEL=claude-acp/sonnet
-GEMINI_MODEL=gemini-acp/gemini-2.5-flash
-OPENCODE_MODEL=opencode-acp/opencode/kimi-k2.5-free
+GEMINI_MODEL=gemini-acp/gemini-3-flash-preview
+OPENCODE_MODEL=opencode-acp/opencode/gemini-3-flash-preview
 
 # Behavior
 WORKSPACE_DIR=aiap            # AIAP package directory
@@ -255,10 +257,20 @@ TELEGRAM_BOT_TOKEN=
 |--------|-------------|
 | `claude-acp/sonnet` | Claude Sonnet |
 | `claude-acp/opus` | Claude Opus |
-| `gemini-acp/gemini-2.5-flash` | Gemini Flash |
-| `opencode-acp/opencode/kimi-k2.5-free` | OpenCode free Kimi |
+| `gemini-acp/gemini-3-flash-preview` | Gemini Flash |
+| `opencode-acp/opencode/gemini-3-flash-preview` | OpenCode Gemini Flash |
 | `opencode-acp/anthropic/claude-sonnet-4-5` | OpenCode → Claude |
-| `openclaw/default` | OpenClaw default |
+
+### Recommended Models for AISOP/AISIP
+
+Models proven to run AISOP/AISIP flows flawlessly:
+
+| Model | Notes |
+|-------|-------|
+| `gemini-3-flash-preview` | Fast and precise, recommended for daily use |
+| `gemini-3.1-pro-preview` | Stronger reasoning, ideal for complex flows |
+
+**Best runtime combination**: `SoulBot` + `Gemini CLI` + `gemini-3-flash-preview`
 
 ---
 
@@ -317,7 +329,7 @@ AI-driven scheduling system — the AI embeds `<!--SOULBOT_CMD:-->` directives i
 
 - Three trigger types: Once / Interval / Cron
 - Cross-agent scheduling: Agent A creates tasks for Agent B
-- AISOP payload: scheduled tasks carry complete AISOP V1.0.0 blueprints
+- AISOP/AISIP payload: scheduled tasks carry complete AISOP/AISIP V1.0.0 blueprints
 - Persistent recovery: auto-restore active tasks after restart
 
 ---

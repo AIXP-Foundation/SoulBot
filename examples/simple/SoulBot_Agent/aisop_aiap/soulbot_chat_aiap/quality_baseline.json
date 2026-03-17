@@ -1,0 +1,110 @@
+{
+    "program": "soulbot_chat",
+    "version": "1.2.0",
+    "scoring_scale": "1-5",
+    "threedimscore": {
+        "weighted": 4.975,
+        "grade": "S",
+        "dimensions": {
+            "C": {
+                "score": 5.0,
+                "weight": 0.25,
+                "items": 7
+            },
+            "I": {
+                "score": 4.92,
+                "weight": 0.45,
+                "items": 13
+            },
+            "D": {
+                "score": 4.9,
+                "weight": 0.3,
+                "items": 10
+            }
+        }
+    },
+    "simulation": {
+        "total": 670,
+        "pass": 670,
+        "fail": 0,
+        "warn": 0,
+        "groups": {
+            "baseline_v1.0.0": {
+                "total": 58,
+                "green": 58,
+                "yellow": 0,
+                "red": 0,
+                "categories": {
+                    "A_basic": 10,
+                    "B_conversation": 15,
+                    "C_quality_gate": 3,
+                    "D_memory": 5,
+                    "E_safety": 5,
+                    "I_integration": 3,
+                    "E_injection": 6,
+                    "L_lifecycle": 2,
+                    "K_compliance": 3,
+                    "F_v160_features": 6
+                }
+            },
+            "evolution_v1.1.0": {
+                "total": 44,
+                "pass": 44,
+                "fail": 0,
+                "warn": 0,
+                "categories": {
+                    "A_thinking_mode": 10,
+                    "B_version_consistency": 8,
+                    "C_backward_compat": 6,
+                    "D_structural_integrity": 8,
+                    "E_cross_module": 6,
+                    "F_security_compliance": 6
+                }
+            },
+            "evolution_v1.2.0": {
+                "total": 94,
+                "pass": 73,
+                "expected_fail": 8,
+                "warn": 13,
+                "red": 0,
+                "node_coverage": "67/67 (100%)",
+                "transition_coverage": "82/89 (92%)",
+                "categories": {
+                    "A_basic_flow": 12,
+                    "B_adaptive_features": 14,
+                    "C_quality_gate": 6,
+                    "D_memory_topic": 8,
+                    "E_safety_disclosure": 10,
+                    "F_compliance": 8,
+                    "G_cross_module": 6,
+                    "H_strategy_selection": 8,
+                    "J_edge_cases": 6,
+                    "K_pacing_intelligence": 6,
+                    "L_data_privacy": 4,
+                    "M_regression": 6
+                }
+            },
+            "evolution_v1.3.0": {
+                "total": 30,
+                "pass": 30,
+                "fail": 0,
+                "warn": 0,
+                "red": 0,
+                "node_coverage": "23/23 main functions (100%)",
+                "transition_coverage": "fast_path + full_path + fallback verified",
+                "categories": {
+                    "A_fast_path_routing": 6,
+                    "B_fast_deliver_quality": 5,
+                    "C_safety_override": 4,
+                    "D_continuity_handling": 3,
+                    "E_fallback_to_nlu": 3,
+                    "F_assert_chain": 4,
+                    "G_regression_existing": 5
+                }
+            }
+        }
+    },
+    "total": 668,
+    "pass": 668,
+    "fail": 0
+}

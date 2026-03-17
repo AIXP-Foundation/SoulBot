@@ -1,0 +1,137 @@
+{
+    "scoring_scale": "1-5",
+    "version": "1.2.0",
+    "snapshot_date": "2026-03-13",
+    "three_dim_test": {
+        "tier": "Standard",
+        "weights": {
+            "C": 0.25,
+            "I": 0.45,
+            "D": 0.3
+        },
+        "cognitive": {
+            "score": 4.857,
+            "grade": "S",
+            "items": {
+                "C1": 5,
+                "C2": 5,
+                "C3": 5,
+                "C4": 5,
+                "C5": 5,
+                "C6": 5,
+                "C7": 4
+            }
+        },
+        "intrinsic": {
+            "score": 5.0,
+            "grade": "A",
+            "items": {
+                "I1": 5,
+                "I2": 5,
+                "I3": 5,
+                "I4": 5,
+                "I5": 5,
+                "I6": 5,
+                "I7": 5,
+                "I12": 5
+            },
+            "na_items": [
+                "I8",
+                "I9",
+                "I10",
+                "I11",
+                "I13"
+            ]
+        },
+        "detail": {
+            "score": 4.9,
+            "grade": "S",
+            "items": {
+                "D1": 5,
+                "D2": 5,
+                "D3": 5,
+                "D4": 5,
+                "D5": 5,
+                "D6": 4,
+                "D7": 5,
+                "D8": 5,
+                "D9": 5,
+                "D10": 5
+            }
+        },
+        "weighted_score": 4.934,
+        "grade": "S"
+    },
+    "simulation": {
+        "scenarios_total": 33,
+        "scenarios_passed": 33,
+        "pass_rate": 1.0,
+        "categories": [
+            "normal_path",
+            "round_loop",
+            "planner",
+            "security",
+            "error",
+            "mode",
+            "loop",
+            "audit",
+            "report",
+            "safety",
+            "validation",
+            "protocol",
+            "aisip",
+            "search_safety",
+            "version"
+        ]
+    },
+    "regression_check": {
+        "old_weighted_score": 4.803,
+        "new_weighted_score": 4.934,
+        "delta": 0.131,
+        "status": "improved"
+    },
+    "evolution_notes": {
+        "v1.1.0_changes": [
+            "B1: Quality Baseline Generation + Cross-Round Trend Analysis — FinalReport step1_5 (MF17 quality_baseline.json generation/update) + validator CheckRegression step1_5 (gradual decline, convergence, dimension divergence detection across 3+ rounds). InfoQ 2025 Pipeline Quality Gates, OpenAI 2025 Self-Evolving Agents, AtScale 2025 semantic drift.",
+            "B2: Round Provenance Chain — RecordSuccess step1_5 (per-round provenance record with SHA-256 integrity seal) + FinalReport step1_7 (audit trail compilation from provenance chain). SLSA Framework, JFrog 2025 software provenance, in-toto attestation.",
+            "B3: Convergence Detection — LoopControl step1_5 (quality convergence, gradual decline exit, score ceiling, dimension divergence; mode-dependent action: AUTO auto-exit, SEMI/SUPERVISED user choice). Composio 2025 Polling Tax, Martin Fowler YAGNI, ByteBridge 2026 HOTL.",
+            "B4: Protocol Alignment Hardening — ResolveTarget step2_5 (axiom_0 verification, governance_mode check, governance_hash SHA-256 verification, trust_level consistency). NIST AI RMF 2025, Deloitte 2026, SLSA Level 2.",
+            "C1: axiom_0 corrected from Human_Sovereignty_and_Benefit to Human_Sovereignty_and_Wellbeing",
+            "C2: Version bump 1.0.0 → 1.1.0 across all 4 modules",
+            "C3: quality_baseline.json created (MF17 compliance)",
+            "C4: agent_card.json version and description updated",
+            "C5: AIAP.md version, summary, quality, benchmark, governance_hash updated",
+            "C6: Executor Creator version reference dynamized"
+        ],
+        "remaining_yellow": [
+            "Y1: C7 token estimation is approximation (cannot count exact tokens without tokenizer)",
+            "Y2: D6 governance_hash computed over .aisop.json files only (AIAP.md excluded from hash)",
+            "Y3: B2 AISIP detection is advisory - actual AISIP generation requires Creator DUAL mode support",
+            "Y4: B3 search injection patterns are pattern-based, not ML-based - novel injection patterns may bypass",
+            "Y5: B4 symlink check depends on OS resolution - may behave differently across platforms"
+        ],
+        "baseline_version": "1.1.0",
+        "v1.2.0_changes": [
+            "B1: Protocol alignment - flow_format: AISOP added per section 3.1, Project Fields 7->8 (14 frontmatter), generator v1.6.0->v1.14.0",
+            "B2: AISIP/DUAL format detection - planner.LoadState.step4_5 detects target format (AISOP/AISIP/DUAL), executor.PrepareContext passes target_language to Creator, validator.LoadBaseline.step3_5 dual-format consistency check",
+            "B3: Search query safety hardening (OWASP 2026) - 5-layer defense: strip metacharacters, detect prompt injection, constrain alphanumeric, length limit, result verification",
+            "B4: Path traversal guard + file integrity - main.ResolveTarget: ../ detection, URL-encoded traversal, workspace containment, symlink resolution. executor.SnapshotPre: SHA-256 post-copy verification, file count check",
+            "C1: Version references fixed - name field v1.0.0->v1.2.0, all module versions 1.1.0->1.2.0",
+            "C2: AIAP.md tags updated with aisip-aware, dual-format, search-safety, protocol-alignment",
+            "C3: quality_baseline.json and agent_card.json updated"
+        ]
+    },
+    "pipeline": "creator_v1.14.0_evolve",
+    "timestamp": "2026-03-15T00:00:00Z",
+    "evolution_from": "1.1.0",
+    "multi_file": {
+        "total": 4,
+        "passed": 4,
+        "checks": {
+            "MF1_version_consistency": "PASS - 1.2.0 across main.aisop.json, AIAP.md, agent_card.json, quality_baseline.json, planner, executor, validator",
+            "MF2_module_file_exist": "PASS - all 4 .aisop.json exist",
+            "MF3_governance_hash": "PASS - AIAP.md hash matches computed",
+            "MF35_flow_format_consistency": "PASS - AIAP.md flow_format:AISOP, files are *.aisop.json, seed:aisop.dev"
+        }
+    }
+}

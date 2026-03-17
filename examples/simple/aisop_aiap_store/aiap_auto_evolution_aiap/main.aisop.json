@@ -1,0 +1,173 @@
+[
+    {
+        "role": "system",
+        "content": {
+            "protocol": "AIAP V1.0.0",
+            "id": "aiap_auto_evolution.main",
+            "name": "AIAP Auto Evolution v1.2.0",
+            "thinking_mode": {
+                "L0": "Thinking in hexadecimal machina code",
+                "L1": "Output helpfully in User's exact language and script variant",
+                "output": "L1"
+            },
+            "version": "1.2.0",
+            "summary": "Automated multi-round AIAP evolution orchestrator. Receives user command (target program, round count, mode), plans evolution direction per round (web search + anti-over-engineering + human habit alignment), executes each round via nested Creator intent execution (AIAP_Tools), validates quality after each round. Supports AUTO/SEMI/SUPERVISED modes. Preserves successful rounds on failure. Pattern B+G, 4 modules, 40 nodes.",
+            "description": "AIAP Auto Evolution main orchestrator. Sub_mermaid architecture (router 10 + round_loop 9). Router NLU classifies 5 intents: evolve_batch (full loop), status, abort, resume, history. evolve_batch triggers round_loop sub-graph which iterates N rounds of plan-execute-validate. Each round delegates to planner (direction search), executor (Creator intent execution), and validator (quality regression check). Mode determines user interaction level: AUTO (no confirmation), SEMI (per-round plan confirmation), SUPERVISED (full review per round).",
+            "tools": [
+                "file_system",
+                "google_search",
+                "web_browser"
+            ],
+            "parameters": {
+                "workspace_dir": {
+                    "type": "string",
+                    "default": "",
+                    "agentic_prompt": "REQUIRED: Absolute path to AIAP store directory containing target programs."
+                },
+                "max_rounds_cap": {
+                    "type": "integer",
+                    "default": 10,
+                    "agentic_prompt": "Hard upper limit for rounds per batch. Safety cap to prevent runaway evolution."
+                }
+            },
+            "fractal_exempt": "19 functional nodes distributed across 2 sub_mermaid sub-graphs (router 10 + round_loop 9). Maximum single-path execution: 15 nodes (router ParseCommand+ResolveTarget+ModeConfig + round_loop full cycle x N rounds). Round_loop nodes are sequential delegation operations to planner/executor/validator sub-modules.",
+            "system_prompt": "AIAP automated evolution orchestrator. Execute multi-round evolution of user-specified AIAP programs. Enforce quality gates per round. Preserve successful rounds on failure. Anti-over-engineering and human habit alignment in all planning.\nAlign: Human Sovereignty and Benefit."
+        }
+    },
+    {
+        "role": "user",
+        "content": {
+            "instruction": "RUN aisop.main",
+            "aisop": {
+                "main": "graph TD\n    Start[User Command] --> NLU{Analyze Intent}\n    NLU -- evolve_batch --> ParseCommand[Parse Evolution Command]\n    NLU -- status --> ShowStatus[Show Evolution Progress]\n    NLU -- abort --> AbortEvolution[Abort Evolution]\n    NLU -- resume --> ResumeEvolution[Resume Evolution]\n    NLU -- history --> ShowHistory[Show Evolution History]\n    ParseCommand --> ResolveTarget[Resolve Target Program]\n    ResolveTarget --> ModeConfig[Configure Evolution Mode]\n    ModeConfig --> RoundLoop[aisop.round_loop]\n    RoundLoop --> FinalReport[Generate Final Report]\n    FinalReport --> endNode((End))\n    ShowStatus --> endNode\n    AbortEvolution --> endNode\n    ResumeEvolution --> endNode\n    ShowHistory --> endNode",
+                "round_loop": "graph TD\n    Start[Round Entry] --> PlanRound[Plan This Round]\n    PlanRound --> UserGate{User Confirmation Gate}\n    UserGate -- Confirmed/Auto --> ExecuteRound[Execute Round]\n    UserGate -- Rejected --> SkipRound[Skip Round]\n    ExecuteRound --> ValidateRound[Validate Round Result]\n    ValidateRound --> RoundGate{Round Quality Gate}\n    RoundGate -- Pass --> RecordSuccess[Record Success]\n    RoundGate -- Fail --> RollbackRound[Rollback Failed Round]\n    RecordSuccess --> LoopControl{More Rounds?}\n    RollbackRound --> LoopControl\n    SkipRound --> LoopControl\n    LoopControl -- Yes --> PlanRound\n    LoopControl -- No --> endNode((End))"
+            },
+            "functions": {
+                "Start": {
+                    "step1": "Receive user command. Empty/unclear -> present menu: (1) evolve_batch — batch evolve a program N rounds, (2) status — check current evolution progress, (3) abort — stop ongoing evolution, (4) resume — resume interrupted evolution, (5) history — view past evolution results.",
+                    "constraints": "INPUT VALIDATION: (A) Type guard — string only. (B) Size guard — truncate >2000 chars. (C) Injection guard — strip shell metacharacters. (D) Path guard — reject paths outside workspace_dir.",
+                    "Error": "Unparseable -> present numbered menu -> inform user."
+                },
+                "NLU": {
+                    "step1": "Classify into 5 intents: (a) evolve_batch — user wants to evolve a program multiple rounds. (b) status — user asks about current/ongoing evolution progress. (c) abort — user wants to stop an ongoing evolution. (d) resume — user wants to continue an interrupted evolution batch. (e) history — user wants to see past evolution results.",
+                    "step2": "CONFIDENCE: >=80% -> route directly. <80% -> ask user to clarify.",
+                    "constraints": "HIGH-CONFUSION PAIRS: P1) evolve_batch/resume: new batch -> evolve_batch; continue interrupted -> resume. SIGNAL: 'evolve','upgrade','batch','run' -> evolve_batch; 'continue','resume','pick up' -> resume. P2) status/history: ongoing -> status; past completed -> history. SIGNAL: 'current','progress','ongoing' -> status; 'last time','previous','results' -> history. P3) abort/status: stop execution -> abort; check state -> status. SIGNAL: 'stop','cancel','abort' -> abort; 'how far','progress' -> status.",
+                    "Error": "Classification fails -> present numbered intent menu -> inform."
+                },
+                "ParseCommand": {
+                    "step1": "Extract from user command: (a) target_program — name or path of AIAP program to evolve. (b) round_count — number of evolution rounds (default: 1). (c) mode — AUTO, SEMI, or SUPERVISED (default: SEMI). (d) evolution_focus — optional specific direction or goal for evolution.",
+                    "step2": "VALIDATE: round_count must be 1-{max_rounds_cap}. If exceeds cap, warn user and clamp to max_rounds_cap. mode must be one of AUTO/SEMI/SUPERVISED. If unrecognized, default to SEMI with notice.",
+                    "step3": "PARSE PATTERNS: 'evolve X N times auto' -> target=X, rounds=N, mode=AUTO. 'evolve X 5 rounds supervised' -> target=X, rounds=5, mode=SUPERVISED. 'evolve X' -> target=X, rounds=1, mode=SEMI (defaults). Chinese patterns: 'evolve(zh) X N times(zh) fully-automatic(zh)' -> target=X, rounds=N, mode=AUTO. 'continuous-evolve(zh) X N rounds(zh)' -> target=X, rounds=N, mode=SEMI.",
+                    "constraints": "round_count MUST NOT exceed max_rounds_cap parameter. mode defaults to SEMI (safest). If user says 'fully automatic' or 'no confirmation needed' -> AUTO. If user says 'I want to review each round' -> SUPERVISED.",
+                    "Error": "Cannot parse target -> ask user to specify program name. Cannot parse rounds -> default to 1."
+                },
+                "ResolveTarget": {
+                    "step1": "Resolve target_program to actual directory: (a) Exact path -> verify exists, use directly. (b) Name only -> scan workspace_dir for '{name}_aiap/' directory. (c) Ambiguous/multiple matches -> present numbered list for user selection. (d) No match -> list all available programs in workspace_dir.",
+                    "step2": "Load target program state: read AIAP.md to extract current version, pattern, module list, quality score. Store as evolution_baseline = { version, pattern, modules, quality_score, node_count }.",
+                    "step2_5": "PROTOCOL ALIGNMENT CHECK (B4 v1.1.0 — NIST AI RMF 2025 Govern/Map/Measure/Manage; Deloitte 2026 Sandboxed Constitutional Agency pre-deployment validation; SLSA Level 2 provenance verification): After loading target program state (step2) and BEFORE self-evolution guard (step3), verify that the target program's governance configuration aligns with AIAP Protocol V1.0.0 requirements. PURPOSE: catch protocol misconfigurations before starting a multi-round evolution — a misaligned program may produce invalid results that waste all rounds. METHOD: (1) AXIOM_0 CHECK: read target AIAP.md axiom_0 field. Verify value is exactly 'Human_Sovereignty_and_Wellbeing' (protocol standard). If different → YELLOW advisory: 'PROTOCOL-AXIOM: target program axiom_0 is \"{actual}\", expected \"Human_Sovereignty_and_Wellbeing\". Evolution will proceed but axiom alignment is recommended.' Record in evolution_baseline.protocol_warnings[]. (2) GOVERNANCE_MODE CHECK: verify governance_mode is one of 'NORMAL', 'STRICT'. Unknown value → YELLOW: 'PROTOCOL-MODE: governance_mode \"{mode}\" not recognized.' (3) GOVERNANCE_HASH VERIFICATION: if target AIAP.md contains governance_hash field (non-empty, non-placeholder): compute SHA-256 of all .aisop.json files in target directory (alphabetical order, CRLF→LF normalized). Compare with declared governance_hash. MATCH → PASS. MISMATCH → RED: 'PROTOCOL-HASH-MISMATCH: governance_hash verification failed. Files may have been modified outside of pipeline. Declared: {declared}, computed: {computed}. Recommend: verify file integrity before evolving.' RED → present to user: [Continue Anyway] [Abort]. If governance_hash absent → YELLOW: 'No governance_hash in target — integrity unverifiable.' (4) TRUST_LEVEL CONSISTENCY: read trust_level and tools[] from target AIAP.md. Verify: file_system present → T2+, network tools present → T3+, write operations declared → T4+. Mismatch → YELLOW: 'PROTOCOL-TRUST: declared trust_level={level} inconsistent with tools={tools}.' (5) OUTPUT: protocol_alignment_report = { axiom_ok: boolean, governance_mode_ok: boolean, hash_verified: boolean|null, trust_consistent: boolean, warnings: [string], blockers: [string] }. Store in evolution_baseline for planner reference. (6) GATE: if blockers.length > 0 AND user does not override → ABORT evolution. If warnings only → proceed with advisory. Log: 'PROTOCOL CHECK: {passed}/{total} checks passed, {warnings_count} warnings.'",
+                    "step3": "SELF-EVOLUTION GUARD + PATH TRAVERSAL DEFENSE (B4 v1.2.0 — OWASP 2026 Path Traversal Prevention; CWE-22 mitigation): (a) PATH SANITIZATION: reject target_program containing: '..', '%2e%2e', URL-encoded traversal sequences, null bytes ('\\x00'), or paths starting with '/' or drive letters outside workspace_dir. If detected → BLOCK: 'PATH-TRAVERSAL: suspicious path pattern detected in target_program. Input rejected for security.' (b) Normalize target_program to absolute canonical path (resolve symlinks, '..' traversal, relative paths). (c) WORKSPACE CONTAINMENT: verify normalized path starts with workspace_dir prefix. If not → BLOCK: 'TARGET-ESCAPE: resolved path {path} is outside workspace_dir boundary.' (d) Normalize this program's own directory to absolute canonical path. (e) Compare normalized paths. If equal, BLOCK: 'Cannot auto-evolve. Use Creator directly for meta-evolution.' (f) Also check AIAP_Tools subdirectories — if target resolves to any path within this program's AIAP_Tools/, BLOCK: 'Cannot evolve nested tools directly.' (g) SYMLINK CHECK: if target path contains symlinks, resolve to real path and re-verify workspace containment.",
+                    "constraints": "Target must be a valid AIAP program directory with AIAP.md. Self-evolution is blocked (infinite nesting risk). Path normalization MUST happen before comparison to prevent bypass via relative paths or symlinks. Protocol alignment RED findings require user override to continue.",
+                    "Error": "Directory not found -> list available programs -> inform. AIAP.md missing -> warn: 'Target directory exists but lacks AIAP.md — not a valid AIAP program.' Protocol check fails -> log WARNING, continue without protocol verification."
+                },
+                "ModeConfig": {
+                    "step1": "Configure mode-specific behavior: (a) AUTO: set user_gate_behavior='auto_approve', planner_search='web_search_enabled', direction_selection='auto_filter', abort_on='RED_quality_gate_only'. (b) SEMI: set user_gate_behavior='present_plan_for_approval', planner_search='web_search_enabled', direction_selection='user_selects_from_filtered', abort_on='RED_or_user_reject'. (c) SUPERVISED: set user_gate_behavior='full_review_required', planner_search='web_search_enabled', direction_selection='user_reviews_all', abort_on='RED_or_user_reject_or_user_pause'.",
+                    "step2": "Initialize round_state = { current_round: 0, max_rounds: round_count, completed_rounds: [], failed_rounds: [], skipped_rounds: [], mode: mode, evolution_baseline: evolution_baseline }.",
+                    "step3": "Display evolution plan summary to user: 'Starting {mode} evolution of {target_program} v{version} for {round_count} rounds.'",
+                    "constraints": "AUTO mode WARNING: display once at start: 'AUTO mode: evolution will proceed without confirmation. Only RED quality gates will pause execution. Press abort at any time to stop.'",
+                    "Error": "Invalid mode -> fallback to SEMI -> inform."
+                },
+                "RoundLoop": {
+                    "step1": "Delegate to aisop['round_loop'] sub-graph. Pass round_state, mode_config, target_program_path, workspace_dir, evolution_baseline.",
+                    "constraints": "Full delegation — execution continues in round_loop sub-graph. CIRCUIT BREAKER: if 2 consecutive rounds fail (failed_rounds contains 2+ entries with consecutive round_numbers), abort entire batch with summary: 'Circuit breaker triggered: 2 consecutive round failures. Stopping to prevent resource waste.' Preserve all successful rounds.",
+                    "Error": "Delegation fails -> save round_state to .evolution_report_{timestamp}.json with status='interrupted' -> log error context { stage: 'RoundLoop', error_type, round_number } -> inform user with recovery steps: 'Evolution interrupted. Use resume command to continue.'"
+                },
+                "FinalReport": {
+                    "step1": "Generate comprehensive evolution report: (a) Summary: '{completed}/{total} rounds completed, {failed} failed, {skipped} skipped.' (b) Per-round detail: version progression (v1.0.0 -> v1.1.0 -> ... -> v1.N.0), quality score trajectory, changes summary. (c) Overall quality delta: start_score vs end_score. (d) Recommendation: if quality improved, suggest next evolution direction; if plateaued, suggest different approach.",
+                    "step1_5": "QUALITY BASELINE GENERATION (B1 v1.1.0 — InfoQ 2025 Pipeline Quality Gates mandatory checkpoint; OpenAI 2025 Self-Evolving Agents baseline replacement protocol; MF17 mandatory output compliance): After generating the evolution report and BEFORE saving it, generate or update quality_baseline.json in the target program's directory. PURPOSE: ensure MF17 compliance (quality_baseline.json is a mandatory output) and enable future QRG regression detection. METHOD: (1) READ EXISTING: check if target_program_path/quality_baseline.json exists. If yes, load as existing_baseline. If no, initialize empty structure. (2) BUILD BASELINE: construct quality_baseline = { scoring_scale: '1-5', version: round_state.final_version (last successful round's version), snapshot_date: current ISO date, three_dim_test: { weighted_score: round_state.final_quality_score, grade: compute_grade(score), cognitive: { weight: 0.25, score: round_state.final_C_score || 'estimated' }, intrinsic: { weight: 0.45, score: round_state.final_I_score || 'estimated' }, detail: { weight: 0.30, score: round_state.final_D_score || 'estimated' } }, simulation: { total_scenarios: round_state.final_simulation_total, passed: round_state.final_simulation_passed, pass_rate: compute_rate() }, regression_check: { QRG1_single_version: { delta: round_state.quality_delta_total, baseline: round_state.initial_quality_score, current: round_state.final_quality_score } }, evolution_notes: { ['v' + final_version + '_changes']: round_state.all_changes_summary } }. (3) MERGE: if existing_baseline exists, preserve its evolution_notes history entries and merge new version entry. (4) WRITE: atomic write (.tmp then rename) to target_program_path/quality_baseline.json. (5) VERIFY: re-read written file, parse JSON, verify version field matches. Log: 'QUALITY BASELINE: {action} quality_baseline.json v{version} (score: {score}/{grade})' where action = 'Generated' or 'Updated'. SKIP: if round_state.completed_rounds is empty (no successful rounds).",
+                    "step1_7": "AUDIT TRAIL GENERATION (B2 v1.1.0 — SLSA Framework supply chain provenance; JFrog 2025 software provenance standards; in-toto attestation framework): After quality baseline generation, compile all round provenance records into a comprehensive evolution audit trail. PURPOSE: provide verifiable, tamper-evident record of the entire batch evolution for governance and post-mortem analysis. METHOD: (1) COLLECT: gather round_state.provenance_chain[] (populated by RecordSuccess step1_5 for each successful round). (2) BUILD TRAIL: evolution_audit_trail = { program_name: target_program name from AIAP.md, batch_id: pipeline_run_id or UUID, executor: 'aiap_auto_evolution v{self_version}', total_rounds: round_state.max_rounds, completed_rounds: round_state.completed_rounds.length, failed_rounds: round_state.failed_rounds.length, skipped_rounds: round_state.skipped_rounds.length, mode: round_state.mode, start_time: round_state.start_timestamp, end_time: current timestamp, version_trajectory: [v_start, v_r1, v_r2, ...], quality_trajectory: [{ version, score, grade }], provenance_chain: round_state.provenance_chain, integrity_check: { all_hashes_verified: verify all sha256_post in provenance match current files, chain_length: provenance_chain.length, chain_complete: provenance_chain.length == completed_rounds } }. (3) SAVE: write to target_program_path/.evolution_audit_{timestamp}.json. Atomic write. (4) LOG: 'AUDIT TRAIL: {completed} rounds documented, integrity={verified|broken}, version {v_start}→{v_end}'. SKIP: if provenance_chain is empty (no provenance records collected).",
+                    "step2": "Save report to target program's directory as .evolution_report_{timestamp}.json for future reference (history intent).",
+                    "constraints": "Report MUST include quality trajectory to show improvement trend. Failed rounds shown with rollback status. Quality baseline MUST be generated/updated before report save (MF17 compliance). Audit trail MUST be generated if provenance_chain is non-empty.",
+                    "Error": "Report generation fails -> output plain text summary -> inform. Quality baseline write fails -> log WARNING, continue with report. Audit trail write fails -> log WARNING, continue."
+                },
+                "ShowStatus": {
+                    "step1": "Read current round_state from pipeline context or persisted state file. Display: current_round/max_rounds, mode, last completed round result, estimated remaining.",
+                    "constraints": "If no evolution is running, inform user: 'No active evolution batch.'",
+                    "Error": "State not found -> inform no active evolution."
+                },
+                "AbortEvolution": {
+                    "step1": "Set round_state.abort_requested = true. If currently in ExecuteRound, wait for current Creator pipeline to complete (do not interrupt mid-pipeline). Display: 'Evolution aborted after round {current_round}. Completed rounds preserved.'",
+                    "constraints": "NEVER interrupt Creator mid-pipeline. Wait for current round to finish, then stop. Completed rounds are preserved.",
+                    "Error": "No active evolution -> inform: 'Nothing to abort.'"
+                },
+                "ResumeEvolution": {
+                    "step1": "Scan target program directory for .evolution_report_*.json files with status='interrupted'. Load the most recent interrupted batch state. Display: 'Found interrupted evolution at round {current}/{total}. Resume?' Wait for user confirmation.",
+                    "step2": "On confirmation: restore round_state, verify target program version matches expected (last completed round's output version). If version mismatch: warn user that target has been modified since interruption.",
+                    "constraints": "Version mismatch -> present options: (a) resume anyway (risky), (b) start fresh batch, (c) abort.",
+                    "Error": "No interrupted evolution found -> inform: 'No interrupted evolution batch to resume.'"
+                },
+                "ShowHistory": {
+                    "step1": "Scan workspace_dir for all .evolution_report_*.json files across all program directories. Display table: date, target_program, rounds_completed, start_version to end_version, quality_delta.",
+                    "constraints": "Sort by date descending. Limit to last 10 reports unless user asks for more.",
+                    "Error": "No reports found -> inform: 'No evolution history found.'"
+                },
+                "PlanRound": {
+                    "step1": "Increment round_state.current_round. Delegate to planner.aisop.json — pass: target_program_path, current_version (from last round or baseline), evolution_focus, round_number, total_rounds, previous_rounds_summary (what was already done), rejected_directions (from user rejections in previous rounds).",
+                    "step2": "Receive evolution_plan from planner: { direction, level_changes (LEVEL_A/B/C), estimated_impact, risk_assessment, rationale }.",
+                    "constraints": "Planner MUST consider what was already evolved in previous rounds to avoid redundant changes. EMPTY PLAN HANDLING: if planner returns null or empty evolution_plan (no gaps found, no directions survive filtering), auto-generate minimal maintenance plan: { direction: 'quality_polish', level_changes: { LEVEL_C: ['quality checklist improvements'] }, estimated_impact: 'LOW', risk_assessment: 'LOW', rationale: 'No significant gaps found — applying maintenance polish.' }. This ensures every round produces a valid plan.",
+                    "Error": "Planner fails -> attempt minimal maintenance plan -> if still fails, skip this round with reason 'planner_unavailable' -> inform."
+                },
+                "UserGate": {
+                    "step1": "MODE-DEPENDENT BEHAVIOR: (a) AUTO: auto-approve, log 'Round {N} plan auto-approved.' Skip to ExecuteRound. (b) SEMI: present evolution_plan summary to user: 'Round {N}/{total}: {direction}. Changes: {level_changes}. Approve? [Y/n]'. Wait for response. (c) SUPERVISED: present full evolution_plan with rationale, risk assessment, and estimated impact. Wait for detailed user review and approval.",
+                    "step2": "User response: 'yes'/confirm -> route to ExecuteRound. 'no'/reject -> route to SkipRound (add direction to rejected_directions). 'abort' -> set abort flag, route to LoopControl. 'modify' -> allow user to adjust plan, then re-present.",
+                    "constraints": "AUTO mode: NEVER prompt user (except on RED gate). SEMI mode: concise presentation, simple Y/n. SUPERVISED mode: full detail, allow plan modification.",
+                    "Error": "User input unclear -> re-ask with options -> inform."
+                },
+                "ExecuteRound": {
+                    "step1": "Delegate to executor.aisop.json — pass: target_program_path, evolution_plan, workspace_dir, round_number, creator_tool_path (AIAP_Tools/aisop_creator_evolution_aiap/).",
+                    "step2": "Receive execution_result: { success, new_version, files_changed, quality_score, creator_output_summary }.",
+                    "constraints": "Executor runs full Creator 15-stage pipeline via intent execution. Do NOT interrupt. Timeout: per Creator's runtime.timeout_seconds.",
+                    "Error": "Executor fails -> route to RollbackRound with failure details."
+                },
+                "ValidateRound": {
+                    "step1": "Delegate to validator.aisop.json — pass: evolution_baseline (or previous round's result), execution_result, target_program_path.",
+                    "step2": "Receive validation_result: { passed, quality_delta, dimension_breakdown, regression_detected, recommendation }.",
+                    "constraints": "Validator compares pre-round vs post-round quality. Any dimension regression triggers investigation.",
+                    "Error": "Validator fails -> treat as FAIL -> route to RollbackRound."
+                },
+                "RoundGate": {
+                    "step1": "Evaluate validation_result: (a) passed=true AND no regression -> GREEN, route to RecordSuccess. (b) passed=true BUT minor regression in non-critical dimension -> YELLOW. In AUTO mode: proceed with warning. In SEMI/SUPERVISED: present to user for decision. (c) passed=false OR critical regression -> RED, route to RollbackRound.",
+                    "constraints": "GREEN -> always proceed. YELLOW -> mode-dependent. RED -> always rollback.",
+                    "Error": "Cannot evaluate -> treat as RED -> rollback."
+                },
+                "RecordSuccess": {
+                    "step1": "Update round_state: add to completed_rounds: { round_number, old_version, new_version, quality_score, quality_delta, changes_summary }. Update evolution_baseline to new state for next round.",
+                    "step1_5": "PROVENANCE RECORD GENERATION (B2 v1.1.0 — SLSA Framework supply chain provenance verification; JFrog 2025 software provenance standards; in-toto attestation framework): After recording success and BEFORE displaying result, generate a provenance record for this round. PURPOSE: create verifiable, tamper-evident evidence of what changed, why, and with what quality outcome — enabling post-mortem audit and cross-round traceability. METHOD: (1) BUILD RECORD: provenance_record = { round_number: current round, timestamp: ISO 8601, version_before: old_version, version_after: new_version, evolution_direction: evolution_plan.direction (from PlanRound output), changes_applied: evolution_plan.level_changes (list of A/B/C changes with descriptions), quality_before: { weighted: pre_round_score, C: pre_C, I: pre_I, D: pre_D }, quality_after: { weighted: post_round_score, C: post_C, I: post_I, D: post_D }, quality_delta: { weighted: delta_w, C: delta_C, I: delta_I, D: delta_D }, simulation_before: { total: pre_sim_total, passed: pre_sim_passed }, simulation_after: { total: post_sim_total, passed: post_sim_passed }, creator_version: read from Creator's AIAP.md in AIAP_Tools (e.g., 'v1.24.0'), research_sources: evolution_plan.research_sources or [] (web search sources used by planner), planner_filters: { anti_overengineer_rejected: count of rejected directions, human_habit_scores: summary }, sha256_pre: snapshot manifest hash from executor SnapshotPre, sha256_post: compute SHA-256 of all current .aisop.json files in target directory }. (2) INTEGRITY SEAL: compute record_hash = SHA-256(JSON.stringify(provenance_record)). Append record_hash to provenance_record. (3) APPEND: push provenance_record to round_state.provenance_chain[]. (4) LOG: 'PROVENANCE: Round {N} recorded — v{old}→v{new}, quality {delta:+0.000}, SHA verified.' SKIP: never — every successful round MUST have a provenance record.",
+                    "step2": "Display: 'Round {N} PASS: v{old} -> v{new} (quality: {score}, delta: {delta})'",
+                    "constraints": "Update baseline for next round — each round builds on the previous. Provenance record MUST be generated before display (audit trail integrity).",
+                    "Error": "State update fails -> log warning -> continue. Provenance generation fails -> log WARNING with round details, continue without provenance (degraded audit trail)."
+                },
+                "RollbackRound": {
+                    "step1": "Restore target program to pre-round state using executor's pre-round snapshot. Verify restoration by checking version matches pre-round version.",
+                    "step2": "Update round_state: add to failed_rounds: { round_number, failure_reason, rolled_back: true }. Display: 'Round {N} FAIL: {reason}. Rolled back to v{pre_round_version}. Previous successful rounds preserved.'",
+                    "step3": "DECISION: in AUTO mode, stop evolution (safety). In SEMI/SUPERVISED, ask user: 'Round failed. (a) Retry with different plan, (b) Skip and continue, (c) Stop evolution.'",
+                    "constraints": "Rollback MUST restore exact pre-round state. Completed previous rounds are NEVER affected. AUTO mode stops on failure (safety-first).",
+                    "Error": "Rollback fails -> CRITICAL: inform user immediately, show manual recovery steps."
+                },
+                "SkipRound": {
+                    "step1": "Update round_state: add to skipped_rounds: { round_number, reason: 'user_rejected' }. Display: 'Round {N} skipped.'",
+                    "constraints": "Skipped rounds do not count toward completed. Next round uses same baseline as this round.",
+                    "Error": "State update fails -> log warning -> continue."
+                },
+                "LoopControl": {
+                    "step1": "Check: (a) round_state.abort_requested -> exit loop (No). (b) round_state.current_round >= round_state.max_rounds -> exit loop (No). (c) AUTO mode AND last round failed -> exit loop (No, safety stop). (d) Otherwise -> continue (Yes, next round).",
+                    "step1_5": "CONVERGENCE DETECTION (B3 v1.1.0 — Composio 2025 Agent Failure Report 'Polling Tax' avoidance; Martin Fowler YAGNI 'stop when no value'; ByteBridge 2026 HOTL safety nets; OpenAI 2025 Self-Evolving Agents plateau detection): After standard exit checks (step1) and BEFORE deciding to continue, evaluate whether continued evolution provides diminishing returns. PURPOSE: prevent wasted cycles when quality has plateaued or is degrading gradually — each unnecessary round costs tokens, time, and risks introducing regression. METHOD: (1) QUALITY CONVERGENCE: if round_state.completed_rounds.length >= 3, extract last 3 rounds' quality_delta values. If all 3 deltas are in range (-0.001, +0.001) — near-zero change → CONVERGENCE_DETECTED: 'Quality converged at {score}/{grade} for 3 consecutive rounds. Further evolution unlikely to improve score. Recommend: stop batch or change evolution direction.' (2) GRADUAL DECLINE: if validator's trend_analysis is available in pipeline context (produced by B1 CheckRegression step1_5), check trend_analysis.gradual_decline. If gradual_decline detected (cumulative drop > 0.10 across 3+ rounds with each round's individual drop ≤ 0.05) → GRADUAL_DECLINE_DETECTED: 'Quality declining gradually across rounds ({cumulative_delta}). Each round's drop is minor but accumulation is significant. Recommend: stop and review direction.' (3) SCORE CEILING: if round_state.latest_quality_score >= 4.95 → CEILING_DETECTED: 'Near-perfect score ({score}). Marginal improvement possible but risk of regression increases with each change.' (4) DIMENSION DIVERGENCE: if trend_analysis.dimension_divergence detected (one dimension improving while another declining for 2+ rounds) → DIVERGENCE_WARNING: 'Dimensions diverging: {dim_up} improving but {dim_down} declining. Recommend: review to balance.' (5) MODE-DEPENDENT ACTION: AUTO mode: CONVERGENCE/CEILING/DECLINE → auto-exit loop (No) with reason in round_state.exit_reason. DIVERGENCE → auto-exit. SEMI/SUPERVISED mode: present detection to user with options [Continue] [Stop] [Change Direction]. User 'Stop' → exit. User 'Continue' → proceed with WARNING logged. User 'Change Direction' → exit with direction_change_requested flag for next batch. (6) LOG: 'CONVERGENCE CHECK: {status} — {reason}'. If no detection triggered → silent pass, proceed to step2.",
+                    "step2": "On exit (No): pass round_state to FinalReport via endNode.",
+                    "constraints": "Max rounds is a hard cap. Abort flag is checked every iteration. AUTO stops on first failure. Convergence detection is advisory in SEMI/SUPERVISED mode but mandatory exit in AUTO mode.",
+                    "Error": "State check fails -> exit loop safely -> inform. Convergence check fails -> ignore detection, continue with standard checks only."
+                }
+            },
+            "constraints": "GLOBAL CONSTRAINTS: (1) SELF-EVOLUTION BLOCKED: this program cannot target itself for evolution. (2) MAX_ROUNDS_CAP: hard upper limit from parameter (default 10). (3) PRESERVE SUCCESSES: completed rounds are never rolled back. (4) CREATOR INTEGRITY: nested Creator in AIAP_Tools must not be modified during execution. (5) ONE-AT-A-TIME: only one evolution batch can run at a time per target program.",
+            "Error": "Unhandled error -> save current round_state to .evolution_report_{timestamp}.json with status='interrupted' for resume -> inform user."
+        }
+    }
+]

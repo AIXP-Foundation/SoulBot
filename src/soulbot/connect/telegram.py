@@ -307,9 +307,30 @@ def md_to_html(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+async def _notify_flood_control(bot: Any, chat_id: int, retry_after: int) -> None:
+    """Notify user about Telegram flood control wait time."""
+    if retry_after < 60:
+        wait_text = f"{retry_after} seconds"
+    elif retry_after < 3600:
+        minutes = retry_after // 60
+        wait_text = f"{minutes} min"
+    else:
+        hours = retry_after // 3600
+        minutes = (retry_after % 3600) // 60
+        wait_text = f"{hours}h {minutes}m" if minutes else f"{hours}h"
+    try:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=f"\u26a0\ufe0f Telegram rate limit reached. Will resume in ~{wait_text}.",
+        )
+    except Exception:
+        pass
+
+
 async def _edit_html(bot: Any, chat_id: int, message_id: int, text: str) -> bool:
     """Edit a message with HTML rendering, falling back to plain text."""
     from telegram.constants import ParseMode
+    from telegram.error import RetryAfter
 
     html = md_to_html(text)
     try:
@@ -318,6 +339,11 @@ async def _edit_html(bot: Any, chat_id: int, message_id: int, text: str) -> bool
             text=html, parse_mode=ParseMode.HTML,
         )
         return True
+    except RetryAfter as e:
+        logger.warning("Telegram flood control: retry after %ss", e.retry_after)
+        await _notify_flood_control(bot, chat_id, e.retry_after)
+        await asyncio.sleep(min(e.retry_after, 30))
+        return False
     except Exception as e:
         if "not modified" in str(e).lower():
             return True
@@ -327,6 +353,11 @@ async def _edit_html(bot: Any, chat_id: int, message_id: int, text: str) -> bool
                 chat_id=chat_id, message_id=message_id, text=text,
             )
             return True
+        except RetryAfter as e2:
+            logger.warning("Telegram flood control: retry after %ss", e2.retry_after)
+            await _notify_flood_control(bot, chat_id, e2.retry_after)
+            await asyncio.sleep(min(e2.retry_after, 30))
+            return False
         except Exception:
             return False
 
@@ -334,9 +365,15 @@ async def _edit_html(bot: Any, chat_id: int, message_id: int, text: str) -> bool
 async def _reply_html(message: Any, text: str) -> Any:
     """Reply with HTML rendering, falling back to plain text."""
     from telegram.constants import ParseMode
+    from telegram.error import RetryAfter
 
     html = md_to_html(text)
     try:
+        return await message.reply_text(html, parse_mode=ParseMode.HTML)
+    except RetryAfter as e:
+        logger.warning("Telegram flood control on reply: retry after %ss", e.retry_after)
+        await _notify_flood_control(message.get_bot(), message.chat_id, e.retry_after)
+        await asyncio.sleep(min(e.retry_after, 30))
         return await message.reply_text(html, parse_mode=ParseMode.HTML)
     except Exception:
         return await message.reply_text(text)
@@ -1099,6 +1136,13 @@ class TelegramBridge:
                                 if part.text:
                                     final_text += part.text
                             if final_text:
+                                # Strip L2 audit block at producer stage
+                                # so consumer never displays it
+                                try:
+                                    from ..l2_splitter import split_l2
+                                    final_text = split_l2(final_text).l1
+                                except Exception:
+                                    pass
                                 kept = buffer["text"][: buffer["_turn_offset"]]
                                 buffer["text"] = kept + final_text + "\n\n"
                                 buffer["_turn_offset"] = len(buffer["text"])
@@ -1122,6 +1166,12 @@ class TelegramBridge:
 
                 while not buffer["done"] or len(buffer["text"]) > last_len:
                     current = buffer["text"]
+                    # Strip L2 audit block in real-time so it never flickers
+                    try:
+                        from ..l2_splitter import split_l2
+                        current = split_l2(current).l1
+                    except Exception:
+                        pass
 
                     if current and current != last_displayed:
                         # Progressive display: advance to next natural break
@@ -1185,19 +1235,25 @@ class TelegramBridge:
                                     text=html,
                                     parse_mode=ParseMode.HTML,
                                 )
-                            except Exception:
-                                try:
-                                    await context.bot.edit_message_text(
-                                        chat_id=current_msg.chat_id,
-                                        message_id=current_msg.message_id,
-                                        text=show,
-                                    )
-                                except Exception:
-                                    pass
+                            except Exception as _edit_err:
+                                from telegram.error import RetryAfter as _RA
+                                if isinstance(_edit_err, _RA):
+                                    logger.warning("Flood control in consumer: %ss", _edit_err.retry_after)
+                                    await _notify_flood_control(context.bot, current_msg.chat_id, _edit_err.retry_after)
+                                    await asyncio.sleep(min(_edit_err.retry_after, 30))
+                                else:
+                                    try:
+                                        await context.bot.edit_message_text(
+                                            chat_id=current_msg.chat_id,
+                                            message_id=current_msg.message_id,
+                                            text=show,
+                                        )
+                                    except Exception:
+                                        pass
                             last_displayed = display_text
                             last_len = len(display_text)
 
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(1.0)
 
                 # Store overflow msg list for final render to re-use
                 buffer["_overflow_msgs"] = overflow_msgs
@@ -1207,10 +1263,15 @@ class TelegramBridge:
             # Run producer and consumer in parallel
             await asyncio.gather(producer(), consumer())
 
-            # Final result
+            # Final result — strip any remaining L2 audit block
             final_response = buffer["text"] or "(empty response)"
             if buffer["error"] and not buffer["text"]:
                 final_response = f"Error: {buffer['error']}"
+            try:
+                from ..l2_splitter import split_l2
+                final_response = split_l2(final_response).l1
+            except Exception:
+                pass
             final_response = prefix + final_response
 
             # Final HTML rendering — markdown-aware chunking

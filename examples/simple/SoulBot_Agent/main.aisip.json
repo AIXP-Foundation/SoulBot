@@ -1,0 +1,51 @@
+[
+    {
+        "role": "system",
+        "content": {
+            "protocol": "AISIP V1.0.0",
+            "id": "Route.main",
+            "name": "Route",
+            "version": "1.0.0",
+            "summary": "Route main entry — classify user intent and route to matching AIAP package.",
+            "description": "AISIP V1: flow graph visible + function on-demand loading.",
+            "loading_mode": "normal",
+            "tools": ["file_system"],
+            "system_prompt": "{system_prompt}"
+        }
+    },
+    {
+        "role": "user",
+        "content": {
+            "instruction": "ASSERT RUN aisip.main",
+            "user_input": "{user_input}",
+            "aisip": {
+                "main": {
+                    "match": {"type": "decision", "branches": {"matched": "execute", "uncertain": "classify"}},
+                    "execute": {"type": "execute", "next": ["end"]},
+                    "end": {"type": "end"},
+                    "classify": {"type": "classify", "next": ["execute"]}
+                }
+            },
+            "functions": {
+                "match": {
+                    "step1": "Match user intent to the best AIAP package from [Available AIAP packages]",
+                    "context_rule": "If conversation context shows an active AIAP package, ambiguous or follow-up messages (e.g. 'done?', 'next', 'go on') MUST stay routed to the same package. Only switch when user expresses a clearly different intent.",
+                    "no_match": "Inform user that no matching AIAP package exists and suggest adding one",
+                    "uncertain": "If not sure which package to use, route to classify branch"
+                },
+                "classify": {
+                    "step1": "Read and execute intent_classifier_aiap/main.aisop.json using file_system tool",
+                    "step2": "Use classification result to determine the correct AIAP package"
+                },
+                "execute": {
+                    "step1": "Read the matched AIAP package entry file using file_system tool",
+                    "step2": "Parse and run the loaded AISOP/AISIP blueprint, return result to user",
+                    "constraints": "Never fabricate responses without running the routed AIAP package."
+                },
+                "end": {
+                    "step1": "Output final response to user"
+                }
+            }
+        }
+    }
+]

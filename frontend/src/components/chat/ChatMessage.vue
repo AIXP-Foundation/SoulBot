@@ -12,9 +12,35 @@ const props = defineProps<{
 
 marked.use({ breaks: true, gfm: true })
 
+// L2 pattern: last ```json...``` block with "Real Done Flow" or "L0"
+const l2Pattern = /```json\s*\n(\{.*?\})\s*\n?```\s*$/s
+
 const renderedText = computed(() => {
   if (props.type === 'agent') {
-    return marked.parse(props.text) as string
+    let text = props.text
+    let l2Html = ''
+
+    const m = text.match(l2Pattern)
+    const rawJson = m?.[1]
+    if (m && rawJson) {
+      try {
+        const parsed = JSON.parse(rawJson)
+        if (parsed['Real Done Flow'] || parsed['L0']) {
+          const idx = m.index ?? 0
+          text = text.slice(0, idx).trimEnd()
+          const l0 = parsed['L0'] as Record<string, unknown> | undefined
+          const summary = l0
+            ? Object.entries(l0).map(([k, v]) => `${k}:${v}`).join(' | ')
+            : 'L2 Audit'
+          const escaped = rawJson.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          l2Html = `<details class="l2-collapsible"><summary>${summary}</summary><pre><code>${escaped}</code></pre></details>`
+        }
+      } catch {
+        // not valid JSON, keep as-is
+      }
+    }
+
+    return (marked.parse(text) as string) + l2Html
   }
   return props.text
 })
@@ -171,5 +197,33 @@ details[open] > .tool-summary::before {
 
 .msg-text.markdown-body {
   white-space: normal;
+}
+
+.msg-text.markdown-body :deep(.l2-collapsible) {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.msg-text.markdown-body :deep(.l2-collapsible summary) {
+  cursor: pointer;
+  padding: 4px 8px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  user-select: none;
+}
+
+.msg-text.markdown-body :deep(.l2-collapsible pre) {
+  margin: 0;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  font-size: 11px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>

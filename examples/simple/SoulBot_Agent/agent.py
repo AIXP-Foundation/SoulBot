@@ -1,13 +1,15 @@
-"""SoulBot Agent — AISOP Virtual Runtime with AIAP package routing.
+"""SoulBot Agent — Dual protocol (AISOP + AISIP) runtime with AIAP routing.
 
-Lightweight AISOP Agent: caches main.aisop.json with mtime hot-reload —
-near-zero overhead on every call, auto-reloads when file changes on disk.
-Other AISOP files are re-scanned each call so new files appear instantly.
+Supports both .aisop.json (Mermaid flow) and .aisip.json (JSON flow).
+Auto-detects protocol from file content. Hot-reloads on file change.
+AISIP on-demand function loading via SOULBOT_CMD mechanism.
 
 Run:
     python -m soulbot run examples/simple/SoulBot_Agent
+    python -m soulbot web --agents-dir examples/simple
 """
 
+import copy
 import json
 import os
 from datetime import datetime
@@ -17,98 +19,142 @@ import soulbot
 from soulbot.agents import LlmAgent
 
 # ---------------------------------------------------------------------------
-# Pre-compute at startup (module load time)
+# Paths
 # ---------------------------------------------------------------------------
 
 _AGENT_DIR = Path(__file__).parent
-_AIAP_DIR = (_AGENT_DIR / os.getenv("WORKSPACE_DIR", "aiap")).resolve()
-_AIAP_STORE_DIR = (_AGENT_DIR.parent / "aiap_store").resolve()
+_AISOP_AIAP_DIR = (_AGENT_DIR / "aisop_aiap").resolve()
+_AISIP_AIAP_DIR = (_AGENT_DIR / "aisip_aiap").resolve()
+_AISOP_AIAP_STORE_DIR = (_AGENT_DIR.parent / "aisop_aiap_store").resolve()
+_AISIP_AIAP_STORE_DIR = (_AGENT_DIR.parent / "aisip_aiap_store").resolve()
 
-# Main AISOP: lives at agent root (alongside agent.py)
-_main_path = _AGENT_DIR / "main.aisop.json"
-_main_aisop_cache: str = ""
-_main_aisop_mtime: float = 0.0
+# User-specified main file (set to None for auto-detect)
+_MAIN_FILE = "main.aisip.json"
 
 
-def _get_main_aisop() -> str:
-    """Return cached main.aisop.json, auto-reload if file changed on disk."""
-    global _main_aisop_cache, _main_aisop_mtime
-    if not _main_path.is_file():
-        return ""
+# ---------------------------------------------------------------------------
+# Protocol detection & main file discovery
+# ---------------------------------------------------------------------------
+
+def _detect_protocol(data: list) -> str:
+    """Detect protocol: 'aisop' if aisop field present, else 'aisip'."""
+    user_content = data[1]["content"]
+    if "aisop" in user_content:
+        return "aisop"
+    if "aisip" in user_content:
+        return "aisip"
+    return "aisop"
+
+
+def _find_main_file() -> Path:
+    """Find main flow file. Priority: _MAIN_FILE > .aisop.json > .aisip.json."""
+    if _MAIN_FILE:
+        p = _AGENT_DIR / _MAIN_FILE
+        if p.is_file():
+            return p
+    for name in ("main.aisop.json", "main.aisip.json"):
+        p = _AGENT_DIR / name
+        if p.is_file():
+            return p
+    raise FileNotFoundError("No main.aisop.json or main.aisip.json found")
+
+
+# ---------------------------------------------------------------------------
+# Main file cache (mtime hot-reload)
+# ---------------------------------------------------------------------------
+
+_main_cache: list | None = None
+_main_mtime: float = 0.0
+_main_path: Path | None = None
+_main_protocol: str = "aisop"
+
+
+def _get_main_data() -> tuple[list, str, Path]:
+    """Return (parsed_data, protocol, path) with mtime hot-reload."""
+    global _main_cache, _main_mtime, _main_path, _main_protocol
+
+    if _main_path is None:
+        _main_path = _find_main_file()
+
     try:
         mtime = _main_path.stat().st_mtime
-        if mtime != _main_aisop_mtime:
+        if mtime != _main_mtime or _main_cache is None:
             with open(_main_path, encoding="utf-8-sig") as f:
-                _main_aisop_cache = json.dumps(json.load(f), ensure_ascii=False, indent=2)
-            _main_aisop_mtime = mtime
+                _main_cache = json.load(f)
+            _main_mtime = mtime
+            _main_protocol = _detect_protocol(_main_cache)
     except (OSError, json.JSONDecodeError):
         pass
-    return _main_aisop_cache
+
+    return _main_cache or [], _main_protocol, _main_path
 
 
-# AIAP registry: auto-generated from aiap/ directory
+# ---------------------------------------------------------------------------
+# AIAP registry (auto-scan aisop_aiap/ and aisip_aiap/ directories)
+# ---------------------------------------------------------------------------
+
 _aiap_json_path = _AGENT_DIR / "aiap.json"
 _aiap_registry_cache: list[dict] | None = None
-_aiap_dir_mtime: float = 0.0
+_aiap_dirs_mtime: float = 0.0
 
 
 def _get_aiap_registry() -> list[dict]:
-    """Scan aiap/ for *_aiap packages, auto-update aiap.json when changed."""
-    global _aiap_registry_cache, _aiap_dir_mtime
+    """Scan aisop_aiap/ and aisip_aiap/ for *_aiap packages."""
+    global _aiap_registry_cache, _aiap_dirs_mtime
 
-    if not _AIAP_DIR.is_dir():
+    aiap_dirs = [d for d in (_AISOP_AIAP_DIR, _AISIP_AIAP_DIR) if d.is_dir()]
+    if not aiap_dirs:
         return []
 
-    # Check if aiap/ directory changed (any file added/removed)
     try:
-        current_mtime = _AIAP_DIR.stat().st_mtime
+        current_mtime = max(d.stat().st_mtime for d in aiap_dirs)
     except OSError:
         return _aiap_registry_cache or []
 
-    if _aiap_registry_cache is not None and current_mtime == _aiap_dir_mtime:
+    if _aiap_registry_cache is not None and current_mtime == _aiap_dirs_mtime:
         return _aiap_registry_cache
 
-    _aiap_dir_mtime = current_mtime
+    _aiap_dirs_mtime = current_mtime
 
-    # Discover packages
     packages = []
-    for d in sorted(_AIAP_DIR.iterdir()):
-        if not d.is_dir() or not d.name.endswith("_aiap"):
-            continue
-        entry = d / "main.aisop.json"
-        if not entry.is_file():
-            continue
+    for aiap_dir in aiap_dirs:
+        for d in sorted(aiap_dir.iterdir()):
+            if not d.is_dir() or not d.name.endswith("_aiap"):
+                continue
 
-        pkg = {
-            "name": d.name.replace("_aiap", ""),
-            "summary": "",
-            "entry": f"aiap/{d.name}/main.aisop.json",
-        }
+            # Dual-format entry discovery
+            entry = d / "main.aisop.json"
+            if not entry.is_file():
+                entry = d / "main.aisip.json"
+            if not entry.is_file():
+                continue
 
-        # Extract summary from AIAP.md YAML frontmatter
-        aiap_md = d / "AIAP.md"
-        if aiap_md.is_file():
-            try:
-                import yaml
-                content = aiap_md.read_text(encoding="utf-8-sig")
-                if content.startswith("---"):
-                    parts = content.split("---", 2)
-                    if len(parts) >= 3:
-                        data = yaml.safe_load(parts[1])
-                        if isinstance(data, dict):
-                            raw_summary = str(data.get("summary", ""))
-                            # Truncate to first sentence
-                            dot_pos = raw_summary.find(".")
-                            if dot_pos > 0:
-                                pkg["summary"] = raw_summary[:dot_pos + 1]
-                            else:
-                                pkg["summary"] = raw_summary
-            except Exception:
-                pass
+            pkg = {
+                "name": d.name.replace("_aiap", ""),
+                "summary": "",
+                "entry": str(entry.relative_to(_AGENT_DIR)),
+            }
 
-        packages.append(pkg)
+            # Extract summary from AIAP.md YAML frontmatter
+            aiap_md = d / "AIAP.md"
+            if aiap_md.is_file():
+                try:
+                    import yaml
+                    content = aiap_md.read_text(encoding="utf-8-sig")
+                    if content.startswith("---"):
+                        fm_parts = content.split("---", 2)
+                        if len(fm_parts) >= 3:
+                            fm = yaml.safe_load(fm_parts[1])
+                            if isinstance(fm, dict):
+                                raw = str(fm.get("summary", ""))
+                                dot = raw.find(".")
+                                pkg["summary"] = raw[:dot + 1] if dot > 0 else raw
+                except Exception:
+                    pass
 
-    # Write aiap.json
+            packages.append(pkg)
+
+    # Persist registry
     try:
         with open(_aiap_json_path, "w", encoding="utf-8") as f:
             json.dump(packages, f, ensure_ascii=False, indent=2)
@@ -118,75 +164,118 @@ def _get_aiap_registry() -> list[dict]:
     _aiap_registry_cache = packages
     return packages
 
-# Doc paths (AI reads on demand, not injected into prompt)
-_SCHEDULE_GUIDE = Path(soulbot.__file__).parent / "docs" / "schedule_guide.md"
-_AISOP_TEMPLATE = Path(soulbot.__file__).parent / "docs" / "STANDARD.aisop.json"
-_MCP_GUIDE = Path(soulbot.__file__).parent / "docs" / "mcp_guide.md"
+
+# ---------------------------------------------------------------------------
+# System prompt (dual protocol + ASSERT structure)
+# ---------------------------------------------------------------------------
+
+_SHOW_L2 = os.getenv("SHOW_L2_FLOW", "true").lower() == "true"
+
+_SYSTEM_PROMPT_BASE = (
+      "ASSERT: Workflows: .aisop.json and .aisip.json files are PROGRAM CODE, not reference documents. "
+      "Workflow: (1) Execute router main flow → (2) Match user intent to AIAP package → (3) Read and execute the matched package's main.aisop.json or main.aisip.json. "
+      "ASSERT: L1 output MUST match User's exact language, script variant, and cultural context."
+  )
+
+_SYSTEM_PROMPT_L2 = (
+      "ASSERT: L0-L1-L2 Separation: L0 Output JSON in ENGLISH: {intent, confidence, route, state, op}. L1 Output in helpful human language. L2 Execution audit appended after L1 in ```json...```. "
+      "ASSERT: L2 Audit Schema: ```{\"Real Done Flow\":{\"<file_id>[Read file used file_system:<bool>]\":\"<fn>[step1:<⊘|✗|✓>,step2:<⊘|✗|✓>,...]→<fn>[step1:<⊘|✗|✓>,step2:<⊘|✗|✓>,...]\"}}```. "
+      "ASSERT: Final Rendering: Response order: L0, then newline, then 🤖 followed by L1, then newline, then L2."
+  )
+
+_SYSTEM_PROMPT_NO_L2 = (
+      "ASSERT: L0-L1 Separation: L0 Output JSON in ENGLISH: {intent, confidence, route, state, op}. L1 Output in helpful human language. "
+      "ASSERT: Final Rendering: Response order: L0, then newline, then 🤖 followed by L1."
+  )
+
+_SYSTEM_PROMPT = _SYSTEM_PROMPT_BASE + " " + (_SYSTEM_PROMPT_L2 if _SHOW_L2 else _SYSTEM_PROMPT_NO_L2)
 
 
 # ---------------------------------------------------------------------------
-# Dynamic instruction: cached main + live file list
+# Dynamic instruction (dual protocol prompt builder)
 # ---------------------------------------------------------------------------
-
-_SYSTEM_PROMPT = (
-    "You are the AISOP Virtual Runtime interpreter. Your role is to RUN .aisop.json files. "
-    "You must Strictly follow the AISOP V1 protocol: 1. Read the file content. 2. Parse the JSON. 3. Systematically execute each step in the 'aisop' or 'steps'."
-    "Before responding, self-review whether you strictly followed the AISOP Blueprint steps. If not, regenerate your response following the Blueprint flow exactly."
-    "IMPORTANT: L0: Thinking in hexadecimal machina code, L1: Output helpfully in User's exact language and script variant, Final Answer MUST beginning with 🤖 icon followed by L1."
-    "Never output L0 thinking to the user. Only output the final 🤖 L1 answer."
-)
-
 
 def _dynamic_instruction(_ctx) -> str:
-    """Return instruction with cached main blueprint + live file names."""
-    parts = [_SYSTEM_PROMPT]
+    """Build instruction with protocol-aware flow injection + capability hints."""
+    data, protocol, main_path = _get_main_data()
+    if not data:
+        return _SYSTEM_PROMPT
 
-    # AISOP injection (main only)
-    _main = _get_main_aisop()
-    if _main:
-        parts.append(f"[LOADED AISOP: main.aisop.json]\n```json\n{_main}\n```")
+    d = copy.deepcopy(data)
+    mode = d[0]["content"].get("loading_mode", "normal")
+    flow_key = protocol  # "aisop" or "aisip"
 
-    # AIAP directory paths
-    parts.append(f"[AIAP Directory]\n{_AIAP_DIR}")
-    parts.append(f"[AIAP Store Directory]\n{_AIAP_STORE_DIR}\nWhen creating new AIAP programs, always save to this directory.")
+    # --- Replace {system_prompt} based on mode ---
+    if mode == "node":
+        d[0]["content"]["system_prompt"] = (
+            f"Execute the {flow_key} flow step by step. Only provided functions are available — request missing ones with: "
+            f'<!--SOULBOT_CMD:{{"service":"flow","action":"load_functions","path":"{main_path.relative_to(_AGENT_DIR.parent)}","refs":["N?","N?"]}}-->'
+        )
+    else:
+        d[0]["content"]["system_prompt"] = ""
 
-    # AIAP package registry (auto-generated from aiap/ directory)
+    # --- Replace instruction in full mode ---
+    if mode == "normal":
+        d[1]["content"]["instruction"] = f"RUN {flow_key}.main"
+
+    # --- Node mode: keep only first function ---
+    if mode == "node":
+        all_functions = d[1]["content"].get("functions", {})
+        first_node = None
+        if protocol == "aisip":
+            flow_main = d[1]["content"].get("aisip", {}).get("main", {})
+            first_node = next((k for k in flow_main if k != "id"), None)
+        else:
+            # AISOP: first key in functions dict is the entry node
+            first_node = next(iter(all_functions), None)
+        kept = {}
+        if first_node and first_node in all_functions:
+            kept[first_node] = all_functions[first_node]
+        d[1]["content"]["functions"] = kept
+
+    # --- Remove loading_mode (internal field) ---
+    d[0]["content"].pop("loading_mode", None)
+
+    # --- Build prompt parts (reverse order: context first, ASSERT last) ---
+    parts = []
+
+    # 1. Current time
+    parts.append(f"[CURRENT TIME]\n{datetime.now().isoformat(timespec='seconds')}")
+
+    # 2. Tool Use Guide
+    parts.append(
+        "[TOOL USE GUIDE]\n"
+        "Always use your CLI's built-in tools (e.g. file_system, google_search, web_browser) to perform operations."
+    )
+
+    # 3. AIAP directories
+    parts.append(
+        f"[AISOP AIAP Directory]\n{_AISOP_AIAP_DIR}\n"
+        f"[AISIP AIAP Directory]\n{_AISIP_AIAP_DIR}\n"
+        f"[AISOP AIAP Store Directory]\n{_AISOP_AIAP_STORE_DIR}\n"
+        f"[AISIP AIAP Store Directory]\n{_AISIP_AIAP_STORE_DIR}"
+    )
+
+    # 4. AIAP package registry
     registry = _get_aiap_registry()
     if registry:
         lines = ["[Available AIAP packages]"]
         for pkg in registry:
             lines.append(f"- {pkg['name']}: {pkg['summary'] or 'No description'}")
-            lines.append(f"  entry: {_AIAP_DIR / pkg['entry'].split('aiap/', 1)[-1]}")
+            lines.append(f"  entry: {_AGENT_DIR / pkg['entry']}")
         lines.append(
-            "Route user intent to the matching package above, "
-            "then read its entry file using file_system tool and execute the AISOP flow."
+            "Route user intent to the matching package above."
         )
         parts.append("\n".join(lines))
 
-    # Capability hints
-    parts.append(
-        f"[SCHEDULE]\n"
-        f"You have scheduling capability (create/list/modify/cancel).\n"
-        f"When needed, read {_SCHEDULE_GUIDE} for format templates."
-    )
-    parts.append(
-        "[MEMORY]\n"
-        "If you need to recall previous conversations, use the search_history tool.\n"
-        "You can search your own history or other agents' history by name."
-    )
-    parts.append(
-        f"[AISOP TEMPLATE]\n"
-        f"When you need to create or modify aisop.json files, "
-        f"refer to the standard template at: {_AISOP_TEMPLATE}"
-    )
-    parts.append(
-        f"[MCP]\n"
-        f"MCP (Model Context Protocol) servers extend your capabilities with external tools.\n"
-        f"When you need to configure or explain MCP servers, read: {_MCP_GUIDE}"
-    )
+    # 5. Main flow JSON
+    file_id = d[0]["content"].get("id", "main")
+    ext = ".aisop.json" if protocol == "aisop" else ".aisip.json"
+    data_json = json.dumps(d, ensure_ascii=False, indent=2)
+    parts.append(f"[LOADED {protocol.upper()}: {file_id}{ext}]\n```json\n{data_json}\n```")
 
-    # Current time — last for strongest LLM recall
-    parts.append(f"[CURRENT TIME]\n{datetime.now().isoformat(timespec='seconds')}")
+    # 6. ASSERT rules (last = strongest recall)
+    parts.append(_SYSTEM_PROMPT)
 
     return "\n\n".join(parts)
 
@@ -198,18 +287,20 @@ def _dynamic_instruction(_ctx) -> str:
 def _resolve_model() -> str:
     """Pick the active model from .env provider flags."""
     if os.getenv("OPENCODE_CLI", "").lower() in ("true", "1"):
-        return os.getenv("OPENCODE_MODEL", "opencode-acp/opencode/kimi-k2.5-free")
+        return os.getenv("OPENCODE_MODEL", "opencode-acp/opencode/gemini-3-flash-preview")
     if os.getenv("GEMINI_CLI", "").lower() in ("true", "1"):
-        return os.getenv("GEMINI_MODEL", "gemini-acp/gemini-2.5-flash")
-    if os.getenv("OPENCLAW_CLI", "").lower() in ("true", "1"):
-        return os.getenv("OPENCLAW_MODEL", "openclaw/default")
+        return os.getenv("GEMINI_MODEL", "gemini-acp/gemini-3-flash-preview")
     return os.getenv("CLAUDE_MODEL", "claude-acp/sonnet")
 
+
+# ---------------------------------------------------------------------------
+# Root agent
+# ---------------------------------------------------------------------------
 
 root_agent = LlmAgent(
     name="SoulBot_Agent",
     model=_resolve_model(),
-    description="SoulBot Agent — AIAP-powered AI assistant with package routing",
+    description="SoulBot Agent — dual protocol (AISOP + AISIP) with AIAP package routing",
     instruction=_dynamic_instruction,
     include_contents="current_turn",
 )
