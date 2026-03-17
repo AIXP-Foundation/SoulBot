@@ -29,7 +29,7 @@
                     "uncertain": "If not sure which package to use, route to classify branch"
                 },
                 "classify": {
-                    "step1": "Read and execute intent_classifier_aiap/main.aisop.json using file_system tool",
+                    "step1": "Read and execute soulbot_intent_classifier_aiap/main.aisop.json using file_system tool",
                     "step2": "Use classification result to determine the correct AIAP package"
                 },
                 "execute": {

@@ -8,6 +8,14 @@
 
 [English](README.md) | 中文文档
 
+## Axiom 0：人类主权与福祉
+
+SoulBot、AISOP、AISIP、AIAP 各自独立遵循同一个第零公理：
+
+> Align: Human Sovereignty and Wellbeing
+
+任何流程、规则、优化都不得违背 Axiom 0。
+
 ---
 
 ## SoulBot 是什么？

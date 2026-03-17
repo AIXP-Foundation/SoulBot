@@ -8,6 +8,14 @@
 
 [中文文档](README_CN.md) | English
 
+## Axiom 0: Human Sovereignty and Wellbeing
+
+SoulBot, AISOP, AISIP, and AIAP each independently adhere to the same foundational axiom:
+
+> Align: Human Sovereignty and Wellbeing
+
+No process, rule, or optimization may override Axiom 0.
+
 ---
 
 ## What is SoulBot?
